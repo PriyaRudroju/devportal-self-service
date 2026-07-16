@@ -1,0 +1,29 @@
+{
+  "identifier": "s3Bucket",
+  "title": "S3 Bucket",
+  "icon": "Bucket",
+  "schema": {
+    "properties": {
+      "bucketName": {
+        "type": "string",
+        "title": "Bucket Name"
+      },
+      "environment": {
+        "type": "string",
+        "title": "Environment"
+      },
+      "region": {
+        "type": "string",
+        "title": "AWS Region",
+        "default": "us-east-1"
+      },
+      "status": {
+        "type": "string",
+        "title": "Status",
+        "enum": ["pending", "provisioned", "failed"],
+        "default": "pending"
+      }
+    },
+    "required": ["bucketName", "environment"]
+  }
+}

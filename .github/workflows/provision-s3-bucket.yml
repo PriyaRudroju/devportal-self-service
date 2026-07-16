@@ -1,0 +1,101 @@
+name: Provision S3 Bucket
+
+on:
+  workflow_dispatch:
+    inputs:
+      bucket_name:
+        description: "S3 bucket name"
+        required: true
+        type: string
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - dev
+      port_context:
+        description: "Port run context"
+        required: true
+        type: string
+
+env:
+  TF_CLOUD_ORGANIZATION: ${{ secrets.TF_CLOUD_ORGANIZATION }}
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/environments/${{ inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log inputs
+        run: |
+          echo "Bucket name: ${{ inputs.bucket_name }}"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Port context: ${{ inputs.port_context }}"
+
+      - name: Report start to Port
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: LOG
+          message: "Starting S3 bucket provisioning for ${{ inputs.bucket_name }}"
+          portContext: ${{ inputs.port_context }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan
+        run: |
+          terraform plan \
+            -var="bucket_name=${{ inputs.bucket_name }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+
+      - name: Report success to Port
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: UPSERT
+          blueprint: s3Bucket
+          identifier: ${{ inputs.bucket_name }}
+          properties: |
+            {
+              "bucketName": "${{ inputs.bucket_name }}",
+              "environment": "${{ inputs.environment }}",
+              "status": "provisioned",
+              "region": "us-east-1"
+            }
+          portContext: ${{ inputs.port_context }}
+
+      - name: Log success to Port
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: LOG
+          message: "S3 bucket ${{ inputs.bucket_name }} provisioned successfully in ${{ inputs.environment }}"
+          portContext: ${{ inputs.port_context }}
+
+      - name: Report failure to Port
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: LOG
+          message: "S3 bucket provisioning failed for ${{ inputs.bucket_name }} in ${{ inputs.environment }}"
+          portContext: ${{ inputs.port_context }}

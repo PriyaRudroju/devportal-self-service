@@ -1,0 +1,39 @@
+{
+  "identifier": "provision_s3_bucket",
+  "title": "Provision S3 Bucket",
+  "icon": "Bucket",
+  "description": "Provision an AWS S3 bucket via Terraform Cloud",
+  "trigger": {
+    "type": "self-service",
+    "operation": "CREATE",
+    "userInputs": {
+      "properties": {
+        "bucket_name": {
+          "title": "Bucket Name",
+          "type": "string",
+          "description": "Globally unique S3 bucket name"
+        },
+        "environment": {
+          "title": "Environment",
+          "type": "string",
+          "enum": ["dev"],
+          "default": "dev"
+        }
+      },
+      "required": ["bucket_name", "environment"]
+    },
+    "blueprintIdentifier": "s3Bucket"
+  },
+  "invocationMethod": {
+    "type": "GITHUB",
+    "org": "PriyaRudroju",
+    "repo": "devportal-self-service",
+    "workflow": "provision-s3-bucket.yml",
+    "workflowInputs": {
+      "bucket_name": "{{ .inputs.bucket_name }}",
+      "environment": "{{ .inputs.environment }}",
+      "port_context": "{{ .run.id }}"
+    },
+    "reportWorkflowStatus": true
+  }
+}
