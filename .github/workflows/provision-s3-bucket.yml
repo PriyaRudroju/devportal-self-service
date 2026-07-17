@@ -64,7 +64,7 @@ jobs:
             -detailed-exitcode
 
       - name: Terraform Apply
-        if: steps.plan.outcome == 'success'
+        if: steps.plan.outputs.exitcode == '2'
         run: terraform apply -auto-approve tfplan
 
       - name: Report success to Port
