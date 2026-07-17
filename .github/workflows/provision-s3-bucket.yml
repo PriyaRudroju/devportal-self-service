@@ -55,12 +55,15 @@ jobs:
         run: terraform init
 
       - name: Terraform Plan
+        id: plan
         run: |
           terraform plan \
             -var="bucket_name=${{ inputs.bucket_name }}" \
             -out=tfplan
+            -detailed-exitcode
 
       - name: Terraform Apply
+        if: steps.plan.outcome == 'success'
         run: terraform apply -auto-approve tfplan
 
       - name: Report success to Port
