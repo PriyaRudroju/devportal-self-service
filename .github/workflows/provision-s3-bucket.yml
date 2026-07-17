@@ -42,7 +42,8 @@ jobs:
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          operation: LOG
+          operation: PATCH_RUN
+          runId: ${{ fromJson(inputs.port_context).runId }}
           message: "Starting S3 bucket provisioning for ${{ inputs.bucket_name }}"
           portContext: ${{ inputs.port_context }}
 
