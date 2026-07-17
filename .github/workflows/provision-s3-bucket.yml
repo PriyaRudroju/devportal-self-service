@@ -56,10 +56,11 @@ jobs:
 
       - name: Terraform Plan
         id: plan
+        continue-on-error: true
         run: |
           terraform plan \
             -var="bucket_name=${{ inputs.bucket_name }}" \
-            -out=tfplan
+            -out=tfplan \
             -detailed-exitcode
 
       - name: Terraform Apply
