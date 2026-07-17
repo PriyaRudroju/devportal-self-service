@@ -12,7 +12,7 @@ provider "aws" {
 }
 
 module "s3_bucket" {
-  source      = "../../modules/s3-bucket"
+  source      = "https://github.com/PriyaRudroju/devportal-self-service/tree/main/terraform/modules/s3-bucket"
   bucket_name = var.bucket_name
   tags        = var.tags
 }
