@@ -44,7 +44,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           operation: PATCH_RUN
           runId: ${{ fromJson(inputs.port_context).runId }}
-          message: "Starting S3 bucket provisioning for ${{ inputs.bucket_name }}"
+          summary: "Starting S3 bucket provisioning for ${{ inputs.bucket_name }}"
           portContext: ${{ inputs.port_context }}
 
       - uses: hashicorp/setup-terraform@v3
@@ -87,9 +87,11 @@ jobs:
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          operation: LOG
-          message: "S3 bucket ${{ inputs.bucket_name }} provisioned successfully in ${{ inputs.environment }}"
+          operation: PATCH_RUN
+          runId: ${{ fromJson(inputs.port_context).runId }}
+          summary: "S3 bucket ${{ inputs.bucket_name }} provisioned successfully in ${{ inputs.environment }}"
           portContext: ${{ inputs.port_context }}
+          status: "SUCCESS"
 
       - name: Report failure to Port
         if: failure()
@@ -97,6 +99,7 @@ jobs:
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-          operation: LOG
-          message: "S3 bucket provisioning failed for ${{ inputs.bucket_name }} in ${{ inputs.environment }}"
+          operation: PATCH_RUN
+          runId: ${{ fromJson(inputs.port_context).runId }}
+          summary: "S3 bucket provisioning failed for ${{ inputs.bucket_name }} in ${{ inputs.environment }}"
           portContext: ${{ inputs.port_context }}
