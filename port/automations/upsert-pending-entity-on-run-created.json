@@ -1,0 +1,36 @@
+{
+  "identifier": "upsert_pending_ec2_entity",
+  "title": "Upsert Pending EC2 Entity On Run Created",
+  "description": "Creates a catalog entity with pending approval status when an EC2 change request is submitted",
+  "trigger": {
+    "type": "automation",
+    "event": {
+      "type": "RUN_CREATED",
+      "actionIdentifier": "change_ec2_instance"
+    },
+    "condition": {
+      "type": "JQ",
+      "expressions": [".diff.after.status == \"WAITING_FOR_APPROVAL\""],
+      "combinator": "and"
+    }
+  },
+  "invocationMethod": {
+    "type": "UPSERT_ENTITY",
+    "blueprintIdentifier": "ec2ChangeRequest",
+    "mapping": {
+      "identifier": "{{ .event.diff.after.id }}",
+      "title": "EC2 {{ .event.diff.after.properties.instance_name }}",
+      "properties": {
+        "instanceName": "{{ .event.diff.after.properties.instance_name }}",
+        "instanceType": "{{ .event.diff.after.properties.instance_type }}",
+        "environment": "{{ .event.diff.after.properties.environment }}",
+        "region": "us-east-1",
+        "approvalStatus": "pending",
+        "executionStatus": "not_started",
+        "requestedBy": "{{ .event.context.user.email }}",
+        "portRunId": "{{ .event.diff.after.id }}"
+      }
+    }
+  },
+  "publish": true
+}

@@ -1,0 +1,37 @@
+{
+  "identifier": "sync_ec2_entity_on_approval_decision",
+  "title": "Sync EC2 Entity On Approval Decision",
+  "description": "Updates catalog entity approval and execution status when an EC2 request is approved or rejected",
+  "trigger": {
+    "type": "automation",
+    "event": {
+      "type": "RUN_UPDATED",
+      "actionIdentifier": "change_ec2_instance"
+    },
+    "condition": {
+      "type": "JQ",
+      "expressions": [
+        ".diff.before.status == \"WAITING_FOR_APPROVAL\"",
+        ".diff.after.status | IN(\"IN_PROGRESS\", \"DECLINED\")"
+      ],
+      "combinator": "and"
+    }
+  },
+  "invocationMethod": {
+    "type": "UPSERT_ENTITY",
+    "blueprintIdentifier": "ec2ChangeRequest",
+    "mapping": {
+      "identifier": "{{ .event.diff.after.id }}",
+      "title": "EC2 {{ .event.diff.after.properties.instance_name }}",
+      "properties": {
+        "instanceName": "{{ .event.diff.after.properties.instance_name }}",
+        "instanceType": "{{ .event.diff.after.properties.instance_type }}",
+        "environment": "{{ .event.diff.after.properties.environment }}",
+        "approvalStatus": "{{ if .event.diff.after.status == \"DECLINED\" then \"rejected\" else \"approved\" end }}",
+        "executionStatus": "{{ if .event.diff.after.status == \"DECLINED\" then \"failed\" else \"in_progress\" end }}",
+        "portRunId": "{{ .event.diff.after.id }}"
+      }
+    }
+  },
+  "publish": true
+}

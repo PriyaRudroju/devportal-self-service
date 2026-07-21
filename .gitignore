@@ -29,3 +29,8 @@ obj/
 bin/
 *.dll
 *.pdb
+*.zip
+
+# Python
+__pycache__/
+*.pyc

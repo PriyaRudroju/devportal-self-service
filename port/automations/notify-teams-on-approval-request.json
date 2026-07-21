@@ -1,0 +1,34 @@
+{
+  "identifier": "notify_teams_ec2_approval",
+  "title": "Notify Teams For EC2 Approval",
+  "description": "Sends a Teams approval card when an EC2 change request is waiting for approval",
+  "trigger": {
+    "type": "automation",
+    "event": {
+      "type": "RUN_CREATED",
+      "actionIdentifier": "change_ec2_instance"
+    },
+    "condition": {
+      "type": "JQ",
+      "expressions": [".diff.after.status == \"WAITING_FOR_APPROVAL\""],
+      "combinator": "and"
+    }
+  },
+  "invocationMethod": {
+    "type": "WEBHOOK",
+    "url": "https://REPLACE_WITH_API_GATEWAY_URL/teams/approval-request",
+    "agent": false,
+    "synchronized": false,
+    "method": "POST",
+    "body": {
+      "runId": "{{ .event.diff.after.id }}",
+      "actionTitle": "{{ .event.context.action.title }}",
+      "requestedBy": "{{ .event.context.user.email }}",
+      "instanceName": "{{ .event.diff.after.properties.instance_name }}",
+      "instanceType": "{{ .event.diff.after.properties.instance_type }}",
+      "environment": "{{ .event.diff.after.properties.environment }}",
+      "portRunUrl": "https://app.port.io/organization/run?runId={{ .event.diff.after.id }}"
+    }
+  },
+  "publish": true
+}

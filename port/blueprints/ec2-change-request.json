@@ -1,0 +1,51 @@
+{
+  "identifier": "ec2ChangeRequest",
+  "title": "EC2 Change Request",
+  "icon": "AWS",
+  "schema": {
+    "properties": {
+      "instanceName": {
+        "type": "string",
+        "title": "Instance Name"
+      },
+      "instanceType": {
+        "type": "string",
+        "title": "Instance Type"
+      },
+      "instanceId": {
+        "type": "string",
+        "title": "Instance ID"
+      },
+      "environment": {
+        "type": "string",
+        "title": "Environment"
+      },
+      "region": {
+        "type": "string",
+        "title": "AWS Region",
+        "default": "us-east-1"
+      },
+      "approvalStatus": {
+        "type": "string",
+        "title": "Approval Status",
+        "enum": ["pending", "approved", "rejected"],
+        "default": "pending"
+      },
+      "executionStatus": {
+        "type": "string",
+        "title": "Execution Status",
+        "enum": ["not_started", "in_progress", "completed", "failed"],
+        "default": "not_started"
+      },
+      "requestedBy": {
+        "type": "string",
+        "title": "Requested By"
+      },
+      "portRunId": {
+        "type": "string",
+        "title": "Port Run ID"
+      }
+    },
+    "required": ["instanceName", "instanceType", "environment"]
+  }
+}
