@@ -7,7 +7,7 @@ Self-service developer portal demos using Port.io, GitHub Actions, Terraform Clo
 | Use case | Flow |
 |---|---|
 | **S3 bucket provisioning** | Port → GitHub → Terraform Cloud → AWS S3 → Port catalog |
-| **EC2 provisioning with Teams approval** | Port (approval) → Teams card → Lambda → Port approve → GitHub → Terraform Cloud → AWS EC2 → Port catalog |
+| **EC2 provisioning with Teams approval** | Port → Lambda → Teams → Lambda → Port automation → GitHub → Terraform Cloud → AWS EC2 → Port catalog |
 
 ## Architecture
 
@@ -21,20 +21,22 @@ Port.io Self-Service Action
         → Port.io catalog updated (UPSERT on success)
 ```
 
-### EC2 provisioning with Teams approval
+### EC2 provisioning with Teams approval (Lambda-first)
 
 ```
-Port self-service (requiredApproval: true)
-  → Port automations
-      → UPSERT catalog entity (approvalStatus=pending)
-      → WEBHOOK → Lambda/API Gateway → Teams approval card
+Port self-service action (WEBHOOK backend)
+  → Lambda POST /ec2/request
+      → Port API UPSERT catalog entity (approvalStatus=pending)
+      → Teams Workflow HTTP trigger (approval card)
   → Approver clicks Approve/Reject in Teams
-      → Lambda → Port approval API
-  → Port automations
-      → UPSERT catalog entity (approved/rejected)
-  → After approval: GitHub Actions → Terraform Cloud → AWS EC2
-      → Port catalog UPSERT (executionStatus=completed)
+      → Lambda GET /approval-decision
+      → Port API UPSERT (approved/rejected)
+  → Port automation (ENTITY_UPDATED pending→approved)
+      → GitHub Actions → Terraform Cloud → AWS EC2
+          → Port catalog UPSERT (executionStatus=completed)
 ```
+
+Approval happens in Teams/Lambda, not Port native approval. GitHub runs only after the catalog entity moves to `approvalStatus=approved`.
 
 ## Repository structure
 
@@ -43,18 +45,17 @@ Port self-service (requiredApproval: true)
   provision-s3-bucket.yml              # S3 GitHub workflow
   change-ec2-instance.yml              # EC2 GitHub workflow (post-approval)
 lambda/
-  teams-approval/                      # Teams + Port approval Lambda source
+  teams-approval/                      # Port UPSERT + Teams notification Lambda
 port/
   blueprints/
     s3-bucket.json
     ec2-change-request.json
   actions/
     provision-s3-bucket.json
-    change-ec2-instance.json
+    change-ec2-instance.json           # WEBHOOK → Lambda /ec2/request
   automations/
-    upsert-pending-entity-on-run-created.json
-    notify-teams-on-approval-request.json
-    sync-entity-on-approval-decision.json
+    trigger-github-on-ec2-approved.json
+    deprecated/                        # Old Port-native approval automations
 terraform/
   modules/
     s3-bucket/
@@ -72,9 +73,10 @@ Complete these in order for the EC2 + Teams flow:
 
 1. Terraform Cloud workspaces and AWS credentials
 2. Deploy integration Lambda (`dev-integration`)
-3. Wire Port automation webhook URL
-4. Import Port blueprint, action, and automations
-5. Run end-to-end demo
+3. Create Teams Workflow HTTP trigger (or use browser approve URL for demo)
+4. Import Port blueprint, action, and automation
+5. Disable old Port automations if already imported
+6. Run end-to-end demo
 
 ---
 
@@ -101,14 +103,14 @@ Generate a user API token and store in GitHub secrets:
 
 ```bash
 cd terraform/environments/dev-integration
-export TF_VAR_teams_webhook_url="https://outlook.office.com/webhook/..."
+export TF_VAR_teams_webhook_url="https://prod-xx.westus.logic.azure.com:443/workflows/..."
 export TF_VAR_port_client_id="..."
 export TF_VAR_port_client_secret="..."
 terraform init
 terraform apply
 ```
 
-Copy the `approval_request_url` output.
+Copy the `ec2_request_url` output for the Port action webhook URL.
 
 ---
 
@@ -120,11 +122,42 @@ Copy the `approval_request_url` output.
 
 ---
 
-## 3. Microsoft Teams
+## 3. Microsoft Teams (Workflow HTTP trigger)
 
-1. Create or choose a channel for approvals
-2. Add an **Incoming Webhook** connector
-3. Store the webhook URL in Terraform Cloud workspace variable `teams_webhook_url` for `dev-portal-integration-dev`
+Many tenants hide **Incoming Webhook / Connectors**. Use a **Teams Workflow** with an **HTTP request trigger** instead.
+
+### Create the workflow
+
+1. Open the target Teams channel → **Workflows** → **Create from blank**
+2. Trigger: **When a HTTP request is received**
+3. Action: **Post card in chat or channel** with dynamic Approve/Reject links, for example:
+   - Approve: `@{triggerBody()?['approve_url']}`
+   - Reject: `@{triggerBody()?['reject_url']}`
+4. Save the workflow and copy the **HTTP POST URL**
+5. Store that URL in Terraform Cloud workspace variable `teams_webhook_url` for `dev-portal-integration-dev`
+6. Re-run `terraform apply` if the Lambda was deployed before the URL was set
+
+Lambda sends this JSON body to the workflow (default `TEAMS_PAYLOAD_FORMAT=workflow`):
+
+```json
+{
+  "runId": "...",
+  "instance_name": "...",
+  "instance_type": "...",
+  "environment": "...",
+  "requested_by": "...",
+  "port_run_url": "...",
+  "approve_url": "https://<api-id>.execute-api.us-east-1.amazonaws.com/approval-decision?runId=...&decision=approve",
+  "reject_url": "https://<api-id>.execute-api.us-east-1.amazonaws.com/approval-decision?runId=...&decision=reject"
+}
+```
+
+### Fallbacks
+
+| Scenario | What to do |
+|---|---|
+| IT enables Incoming Webhook later | Set `teams_webhook_url` to the connector URL and Lambda env `TEAMS_PAYLOAD_FORMAT=messagecard` |
+| No Teams for demo | Open the `approve_url` from Lambda logs or construct `approval_decision_url?runId=<runId>&decision=approve` in a browser |
 
 ---
 
@@ -146,24 +179,29 @@ Paste [`port/blueprints/ec2-change-request.json`](port/blueprints/ec2-change-req
 
 Paste [`port/actions/change-ec2-instance.json`](port/actions/change-ec2-instance.json).
 
-Then open the action **Permissions** tab:
+Replace the webhook URL placeholder:
 
-- **Enforce manual approval** = Yes
-- Add approver users/teams
+```json
+"url": "https://<api-id>.execute-api.us-east-1.amazonaws.com/ec2/request"
+```
 
-### Import automations
+Use the `ec2_request_url` output from the integration Terraform apply.
+
+The action backend is **Webhook** (not GitHub). Do **not** enable Port native manual approval on this action.
+
+### Import automation
 
 **Automations → + Automation → Edit JSON**
 
-Import all files from [`port/automations/`](port/automations/).
+Import [`port/automations/trigger-github-on-ec2-approved.json`](port/automations/trigger-github-on-ec2-approved.json) and publish it.
 
-Before publishing `notify-teams-on-approval-request.json`, replace the webhook URL placeholder:
+If you previously imported the old automations, disable or delete:
 
-```json
-"url": "https://<api-id>.execute-api.us-east-1.amazonaws.com/teams/approval-request"
-```
+- `upsert_pending_ec2_entity`
+- `notify_teams_ec2_approval`
+- `sync_ec2_entity_on_approval_decision`
 
-Use the `approval_request_url` output from the integration Terraform apply.
+Those are kept under [`port/automations/deprecated/`](port/automations/deprecated/) for reference only.
 
 ---
 
@@ -180,21 +218,26 @@ Use the `approval_request_url` output from the integration Terraform apply.
 ## 6. Verify EC2 + Teams flow
 
 1. Run **Provision EC2 Instance** from Port Self-service
-2. Confirm Port run status = `WAITING_FOR_APPROVAL`
-3. Confirm catalog entity with `approvalStatus=pending`
-4. Confirm Teams card appears in the channel
+2. Confirm Lambda logs show Port UPSERT pending + Teams POST
+3. Confirm catalog entity with `approvalStatus=pending`, `executionStatus=not_started`
+4. Confirm Teams card appears in the channel (or use browser approve URL)
 5. Click **Approve** in Teams
-6. Confirm Port run moves to `IN_PROGRESS`, then GitHub workflow `Provision EC2 Instance` starts
-7. Confirm TFC workspace `dev-portal-ec2-dev` apply succeeds
-8. Confirm EC2 instance in AWS console
-9. Confirm catalog entity: `approvalStatus=approved`, `executionStatus=completed`, `instanceId` populated
+6. Confirm catalog entity: `approvalStatus=approved`, `executionStatus=in_progress`
+7. Confirm Port automation `Trigger GitHub When EC2 Approved` runs
+8. Confirm GitHub workflow `Provision EC2 Instance` starts
+9. Confirm TFC workspace `dev-portal-ec2-dev` apply succeeds
+10. Confirm EC2 instance in AWS console
+11. Confirm catalog entity: `approvalStatus=approved`, `executionStatus=completed`, `instanceId` populated
 
 Reject path:
 
-1. Click **Reject** in Teams
-2. Port run = `DECLINED`
-3. Catalog entity: `approvalStatus=rejected`, `executionStatus=failed`
-4. GitHub workflow should **not** start
+1. Click **Reject** in Teams (or `decision=reject` in browser)
+2. Catalog entity: `approvalStatus=rejected`, `executionStatus=failed`
+3. GitHub workflow should **not** start
+
+### Demo script
+
+> When a developer submits the EC2 self-service form, Port calls our Lambda. Lambda creates a catalog row with status pending and posts a Teams approval card. When the approver clicks Approve, Lambda updates the catalog to approved. That entity update triggers a Port automation which starts the GitHub Actions workflow. GitHub runs Terraform, provisions EC2, and updates the catalog to completed.
 
 ---
 
@@ -226,14 +269,14 @@ terraform plan \
 
 | Symptom | Where to look | Likely cause |
 |---|---|---|
-| Port run stuck in `WAITING_FOR_APPROVAL` | Port automations + Lambda logs | Teams notify automation URL wrong or Lambda not deployed |
-| No Teams card | CloudWatch `/aws/lambda/devportal-teams-approval` | Invalid `teams_webhook_url` |
-| Approve click does nothing | API Gateway + Lambda logs | Wrong API URL in card; Port credentials missing on Lambda |
-| Approved but GitHub not started | Port run page + action backend | `requiredApproval` not enabled or approval PATCH failed |
+| Port run succeeds but no catalog entity | Lambda CloudWatch logs | Port credentials missing or UPSERT failed |
+| No Teams card | CloudWatch `/aws/lambda/devportal-teams-approval` | Invalid `teams_webhook_url` or workflow not published |
+| Approve click does nothing | API Gateway + Lambda logs | Wrong `approve_url` in workflow card |
+| Approved but GitHub not started | Port automations | `trigger_github_on_ec2_approved` not published or entity did not transition pending→approved |
 | GitHub Terraform init fails | GitHub Actions logs | `TF_API_TOKEN` or workspace name mismatch |
 | Terraform apply fails | TFC run logs | AWS credentials or IAM permissions |
 | Catalog missing `instanceId` | GitHub `Capture Terraform outputs` step | Apply failed or output step skipped |
-| `port_context` parse error | Port action JSON | Must be `{"runId":"..."}` JSON string (EC2 action already uses this format) |
+| Old automations still firing | Port automations list | Disable deprecated automations from prior setup |
 
 ---
 
@@ -241,10 +284,10 @@ terraform plan \
 
 | Field | Set when | Values |
 |---|---|---|
-| `approvalStatus` | Port automations after submit/approve/reject | `pending`, `approved`, `rejected` |
-| `executionStatus` | Port automations + GitHub workflow | `not_started`, `in_progress`, `completed`, `failed` |
+| `approvalStatus` | Lambda on request / approve / reject | `pending`, `approved`, `rejected` |
+| `executionStatus` | Lambda on approve/reject + GitHub workflow | `not_started`, `in_progress`, `completed`, `failed` |
 
-GitHub sets `executionStatus=completed` only after Terraform apply succeeds.
+Lambda sets `executionStatus=in_progress` on approve. GitHub sets `executionStatus=completed` only after Terraform apply succeeds.
 
 ---
 

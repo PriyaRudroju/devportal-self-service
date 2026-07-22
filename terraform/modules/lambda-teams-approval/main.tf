@@ -81,21 +81,21 @@ resource "aws_apigatewayv2_integration" "lambda" {
   integration_method     = "POST"
 }
 
-resource "aws_apigatewayv2_route" "approval_request" {
+resource "aws_apigatewayv2_route" "ec2_request" {
   api_id    = aws_apigatewayv2_api.teams_approval.id
-  route_key = "POST /teams/approval-request"
+  route_key = "POST /ec2/request"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 resource "aws_apigatewayv2_route" "approval_decision_get" {
   api_id    = aws_apigatewayv2_api.teams_approval.id
-  route_key = "GET /teams/approval-decision"
+  route_key = "GET /approval-decision"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 
 resource "aws_apigatewayv2_route" "approval_decision_post" {
   api_id    = aws_apigatewayv2_api.teams_approval.id
-  route_key = "POST /teams/approval-decision"
+  route_key = "POST /approval-decision"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 

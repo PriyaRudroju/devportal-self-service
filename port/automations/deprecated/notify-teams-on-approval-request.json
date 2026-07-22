@@ -1,7 +1,7 @@
 {
   "identifier": "notify_teams_ec2_approval",
   "title": "Notify Teams For EC2 Approval",
-  "description": "Sends a Teams approval card when an EC2 change request is waiting for approval",
+  "description": "DEPRECATED — Lambda POST /ec2/request sends the Teams notification",
   "trigger": {
     "type": "automation",
     "event": {
@@ -30,5 +30,5 @@
       "portRunUrl": "https://app.port.io/organization/run?runId={{ .event.diff.after.id }}"
     }
   },
-  "publish": true
+  "publish": false
 }

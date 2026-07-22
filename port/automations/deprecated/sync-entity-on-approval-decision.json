@@ -1,7 +1,7 @@
 {
   "identifier": "sync_ec2_entity_on_approval_decision",
   "title": "Sync EC2 Entity On Approval Decision",
-  "description": "Updates catalog entity approval and execution status when an EC2 request is approved or rejected",
+  "description": "DEPRECATED — Lambda GET /approval-decision UPSERTs approved/rejected",
   "trigger": {
     "type": "automation",
     "event": {
@@ -33,5 +33,5 @@
       }
     }
   },
-  "publish": true
+  "publish": false
 }

@@ -30,19 +30,18 @@
       "required": ["instance_name", "instance_type", "environment"]
     }
   },
-  "requiredApproval": true,
   "invocationMethod": {
-    "type": "GITHUB",
-    "org": "PriyaRudroju",
-    "repo": "devportal-self-service",
-    "workflow": "change-ec2-instance.yml",
-    "reportWorkflowStatus": true,
-    "workflowInputs": {
+    "type": "WEBHOOK",
+    "url": "https://REPLACE_WITH_API_GATEWAY_URL/ec2/request",
+    "method": "POST",
+    "synchronized": false,
+    "body": {
+      "runId": "{{ .run.id }}",
       "instance_name": "{{ .inputs.instance_name }}",
       "instance_type": "{{ .inputs.instance_type }}",
       "environment": "{{ .inputs.environment }}",
-      "port_context": "{\"runId\":\"{{ .run.id }}\"}",
-      "requested_by": "{{ .trigger.by.user.email }}"
+      "requested_by": "{{ .trigger.by.user.email }}",
+      "port_run_url": "https://app.port.io/organization/run?runId={{ .run.id }}"
     }
   }
 }

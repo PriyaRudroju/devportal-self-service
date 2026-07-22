@@ -1,7 +1,7 @@
 {
   "identifier": "upsert_pending_ec2_entity",
   "title": "Upsert Pending EC2 Entity On Run Created",
-  "description": "Creates a catalog entity with pending approval status when an EC2 change request is submitted",
+  "description": "DEPRECATED — Lambda POST /ec2/request creates the pending entity",
   "trigger": {
     "type": "automation",
     "event": {
@@ -32,5 +32,5 @@
       }
     }
   },
-  "publish": true
+  "publish": false
 }

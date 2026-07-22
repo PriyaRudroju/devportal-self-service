@@ -1,0 +1,34 @@
+{
+  "identifier": "trigger_github_on_ec2_approved",
+  "title": "Trigger GitHub When EC2 Approved",
+  "trigger": {
+    "type": "automation",
+    "event": {
+      "type": "ENTITY_UPDATED",
+      "blueprintIdentifier": "ec2ChangeRequest"
+    },
+    "condition": {
+      "type": "JQ",
+      "expressions": [
+        ".diff.before.properties.approvalStatus == \"pending\"",
+        ".diff.after.properties.approvalStatus == \"approved\""
+      ],
+      "combinator": "and"
+    }
+  },
+  "invocationMethod": {
+    "type": "GITHUB",
+    "org": "PriyaRudroju",
+    "repo": "devportal-self-service",
+    "workflow": "change-ec2-instance.yml",
+    "reportWorkflowStatus": true,
+    "workflowInputs": {
+      "instance_name": "{{ .event.diff.after.properties.instanceName }}",
+      "instance_type": "{{ .event.diff.after.properties.instanceType }}",
+      "environment": "{{ .event.diff.after.properties.environment }}",
+      "port_context": "{\"runId\":\"{{ .event.diff.after.properties.portRunId }}\"}",
+      "requested_by": "{{ .event.diff.after.properties.requestedBy }}"
+    }
+  },
+  "publish": true
+}
