@@ -92,7 +92,7 @@ jobs:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           operation: UPSERT
-          blueprint: ec2ChangeRequest
+          blueprint: ec2Instance
           identifier: ${{ fromJson(inputs.port_context).runId }}
           title: EC2 ${{ inputs.instance_name }}
           properties: |
@@ -128,7 +128,7 @@ jobs:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           operation: UPSERT
-          blueprint: ec2ChangeRequest
+          blueprint: ec2Instance
           identifier: ${{ fromJson(inputs.port_context).runId }}
           title: EC2 ${{ inputs.instance_name }}
           properties: |
