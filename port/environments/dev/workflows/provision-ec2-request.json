@@ -1,0 +1,88 @@
+{
+  "identifier": "provision_ec2_request",
+  "title": "Provision EC2 Instance",
+  "icon": "AWS",
+  "description": "Request EC2 with Teams approval — creates pending catalog entity and notifies IDP-Approvals",
+  "category": "Infra",
+  "nodes": [
+    {
+      "identifier": "trigger",
+      "title": "EC2 Request Form",
+      "config": {
+        "type": "SELF_SERVE_TRIGGER",
+        "userInputs": {
+          "properties": {
+            "instance_name": {
+              "title": "Instance Name",
+              "type": "string",
+              "description": "Name tag for the new EC2 instance"
+            },
+            "instance_type": {
+              "title": "Instance Type",
+              "type": "string",
+              "enum": ["t3.micro", "t3.small", "t3.medium"],
+              "default": "t3.micro"
+            },
+            "environment": {
+              "title": "Environment",
+              "type": "string",
+              "enum": ["dev"],
+              "default": "dev"
+            }
+          },
+          "required": ["instance_name", "instance_type", "environment"]
+        }
+      }
+    },
+    {
+      "identifier": "create_pending_entity",
+      "title": "Create Pending Catalog Entity",
+      "config": {
+        "type": "UPSERT_ENTITY",
+        "blueprintIdentifier": "ec2ChangeRequest",
+        "mapping": {
+          "identifier": "{{ .run.id }}",
+          "title": "EC2 {{ .outputs.trigger.instance_name }}",
+          "properties": {
+            "instanceName": "{{ .outputs.trigger.instance_name }}",
+            "instanceType": "{{ .outputs.trigger.instance_type }}",
+            "environment": "{{ .outputs.trigger.environment }}",
+            "region": "{{AWS_REGION}}",
+            "approvalStatus": "pending",
+            "executionStatus": "not_started",
+            "requestedBy": "{{ .trigger.by.user.email }}",
+            "portRunId": "{{ .run.id }}"
+          }
+        }
+      }
+    },
+    {
+      "identifier": "notify_teams",
+      "title": "Send Teams Approval Card",
+      "config": {
+        "type": "WEBHOOK",
+        "url": "{{API_GATEWAY_URL}}/teams/notify",
+        "method": "POST",
+        "body": {
+          "runId": "{{ .run.id }}",
+          "instance_name": "{{ .outputs.trigger.instance_name }}",
+          "instance_type": "{{ .outputs.trigger.instance_type }}",
+          "environment": "{{ .outputs.trigger.environment }}",
+          "requested_by": "{{ .trigger.by.user.email }}",
+          "port_run_url": "https://app.port.io/organization/run?runId={{ .run.id }}",
+          "action_title": "EC2 Change Request"
+        }
+      }
+    }
+  ],
+  "connections": [
+    {
+      "sourceIdentifier": "trigger",
+      "targetIdentifier": "create_pending_entity"
+    },
+    {
+      "sourceIdentifier": "create_pending_entity",
+      "targetIdentifier": "notify_teams"
+    }
+  ]
+}

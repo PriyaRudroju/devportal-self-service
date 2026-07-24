@@ -1,0 +1,82 @@
+name: Deploy Port Config
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "port/**"
+      - "scripts/apply_port_config.py"
+      - "scripts/load_env_config.sh"
+      - ".github/workflows/deploy-port-config.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Port environment folder to apply"
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+        default: dev
+      skip_legacy:
+        description: "Skip legacy actions/automations (workflows only)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: >-
+      ${{
+        github.event_name == 'workflow_dispatch' && (
+          inputs.environment == 'prod' && 'production' ||
+          inputs.environment == 'dev' && 'development' ||
+          inputs.environment
+        ) || 'development'
+      }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve target environment
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "env=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
+            echo "skip_legacy=${{ inputs.skip_legacy }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "env=dev" >> "$GITHUB_OUTPUT"
+            echo "skip_legacy=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Load environment config defaults
+        run: |
+          source scripts/load_env_config.sh "${{ steps.target.outputs.env }}"
+          echo "TFC_WORKSPACE=${TFC_WORKSPACE:-}" >> "$GITHUB_ENV"
+          echo "API_GATEWAY_URL=${API_GATEWAY_URL:-}" >> "$GITHUB_ENV"
+          echo "GITHUB_INSTALLATION_ID=${GITHUB_INSTALLATION_ID:-}" >> "$GITHUB_ENV"
+
+      - name: Apply Port configuration
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_API_URL: https://api.port.io
+          API_GATEWAY_URL: ${{ vars.API_GATEWAY_URL }}
+          GITHUB_INSTALLATION_ID: ${{ vars.GITHUB_INSTALLATION_ID }}
+          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
+          GITHUB_ORG: PriyaRudroju
+          GITHUB_REPO: devportal-self-service
+          AWS_REGION: us-east-2
+        run: |
+          ARGS="--env ${{ steps.target.outputs.env }}"
+          if [ "${{ steps.target.outputs.skip_legacy }}" = "true" ]; then
+            ARGS="$ARGS --skip-legacy"
+          fi
+          python scripts/apply_port_config.py $ARGS
+
+      - name: Summary
+        run: |
+          echo "Applied Port config for: ${{ steps.target.outputs.env }}"
+          echo "TFC workspace: ${TFC_WORKSPACE:-not set}"
+          echo "API Gateway: ${API_GATEWAY_URL:-not set}"

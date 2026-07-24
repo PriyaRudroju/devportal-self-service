@@ -1,0 +1,36 @@
+name: Validate Port Config
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "port/**"
+      - "scripts/apply_port_config.py"
+      - "scripts/load_env_config.sh"
+      - ".github/workflows/validate-port-config.yml"
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - env: dev
+            github_environment: development
+          - env: qa
+            github_environment: qa
+          - env: prod
+            github_environment: production
+    environment: ${{ matrix.github_environment }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load config defaults for ${{ matrix.env }}
+        run: source scripts/load_env_config.sh "${{ matrix.env }}"
+
+      - name: Plan Port config for ${{ matrix.env }}
+        env:
+          API_GATEWAY_URL: ${{ vars.API_GATEWAY_URL }}
+          GITHUB_INSTALLATION_ID: ${{ vars.GITHUB_INSTALLATION_ID }}
+          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
+        run: python scripts/apply_port_config.py --env ${{ matrix.env }} --plan

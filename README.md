@@ -65,7 +65,73 @@ terraform/
     dev/                               # S3 (workspace: dev-portal-s3-dev)
     dev-ec2/                           # EC2 (workspace: dev-portal-ec2-dev)
     dev-integration/                   # Lambda + API Gateway (workspace: dev-portal-integration-dev)
+port/environments/                     # GitOps Port config per environment (dev/qa/prod)
+  dev/config.env                       # Dev URLs, TFC workspace, substitution vars
+  dev/workflows/                       # Port Workflows (preferred)
+  dev/actions/                         # Legacy actions (optional)
+  dev/automations/                     # Legacy automations (optional)
+  qa/ ... prod/ ...                    # Same layout; unique config.env per env
+scripts/
+  apply_port_config.py                 # Apply Port JSON to single org via API
+  load_env_config.sh                   # Source config.env in CI
 ```
+
+## Port config GitOps (dev → qa → prod)
+
+Port configuration lives as JSON in Git under `port/environments/`. All environments apply to the **same Port org** (`org_NaOn60IA22iSZcWo`). Only substituted values (API URLs, Terraform workspace names, form enums) change per environment.
+
+**Talking point for stakeholders:**
+
+> Port configuration is JSON in Git under `port/environments/`. Dev applies automatically on merge. QA and Prod use a gated promote workflow with GitHub Environment approvers. Same Port org throughout — only webhook URLs and workspace names change per environment.
+
+### How promotion works
+
+| Stage | What happens |
+|---|---|
+| Edit dev | Change JSON under `port/environments/dev/` or shared `port/blueprints/` |
+| PR | `validate-port-config.yml` runs `--plan` for dev, qa, and prod |
+| Merge to `main` | `deploy-port-config.yml` applies **dev** to Port automatically |
+| Promote qa/prod | Sync JSON via PR (keep each `config.env` unique), then run **Promote Port Config** workflow |
+
+See [`port/environments/PROMOTION.md`](port/environments/PROMOTION.md) for the full runbook.
+
+### GitHub Environment setup (one-time)
+
+Create GitHub Environments: `development`, `qa`, `production` (prod requires reviewers).
+
+| GitHub Environment | Variables | Secrets |
+|---|---|---|
+| `development` | `API_GATEWAY_URL`, `GITHUB_INSTALLATION_ID`, `TFC_WORKSPACE` | `PORT_CLIENT_ID`, `PORT_CLIENT_SECRET` |
+| `qa` | QA API URL, QA TFC workspace | Port creds (same or QA-specific) |
+| `production` | Prod API URL, prod TFC workspace | Prod creds + required reviewers |
+
+Example dev values:
+
+| Variable | Example |
+|---|---|
+| `API_GATEWAY_URL` | `https://fvoyz6jb9i.execute-api.us-east-2.amazonaws.com` |
+| `TFC_WORKSPACE` | `dev-portal-s3-dev` |
+| `GITHUB_INSTALLATION_ID` | GitHub Ocean app installation ID for this repo |
+
+Variable precedence: `port/environments/<env>/config.env` first, then GitHub Environment variables override in CI.
+
+### Local validate and apply
+
+```bash
+python scripts/apply_port_config.py --env dev --plan
+export PORT_CLIENT_ID=... PORT_CLIENT_SECRET=...
+python scripts/apply_port_config.py --env dev
+```
+
+Use `--skip-legacy` after migrating fully to Port Workflows. Use `--resources blueprints,workflows` for partial apply.
+
+### CI workflows
+
+| Workflow | Trigger | Purpose |
+|---|---|---|
+| `validate-port-config.yml` | PR touching `port/**` | Plan all envs; fail on invalid JSON or unresolved placeholders |
+| `deploy-port-config.yml` | Push to `main` (port changes) | Apply dev config to Port |
+| `promote-port-config.yml` | Manual dispatch | Apply qa or prod with environment gate |
 
 ## Setup order (recommended)
 

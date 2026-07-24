@@ -17,6 +17,8 @@ on:
         type: choice
         options:
           - dev
+          - qa
+          - prod
       port_context:
         description: "Port run context JSON"
         required: true
@@ -32,12 +34,22 @@ env:
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: terraform/environments/dev-ec2
+    environment: >-
+      ${{
+        inputs.environment == 'prod' && 'production' ||
+        inputs.environment == 'dev' && 'development' ||
+        inputs.environment
+      }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Load environment config
+        id: env_config
+        run: |
+          source scripts/load_env_config.sh "${{ inputs.environment }}"
+          echo "tfc_ec2_dir=${TFC_EC2_DIR}" >> "$GITHUB_OUTPUT"
+          echo "tfc_workspace=${TFC_WORKSPACE:-}" >> "$GITHUB_ENV"
 
       - name: Log inputs
         run: |
@@ -62,10 +74,12 @@ jobs:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Init
+        working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
         run: terraform init
 
       - name: Terraform Plan
         id: plan
+        working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
         continue-on-error: true
         run: |
           terraform plan \
@@ -76,11 +90,13 @@ jobs:
 
       - name: Terraform Apply
         if: steps.plan.outputs.exitcode == '2'
+        working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
         run: terraform apply -auto-approve tfplan
 
       - name: Capture Terraform outputs
         if: success()
         id: tf_outputs
+        working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
         run: |
           echo "instance_id=$(terraform output -raw instance_id)" >> "$GITHUB_OUTPUT"
           echo "private_ip=$(terraform output -raw private_ip)" >> "$GITHUB_OUTPUT"
