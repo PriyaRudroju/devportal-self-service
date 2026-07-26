@@ -21,7 +21,7 @@ on:
           - prod
       port_context:
         description: "Port run context JSON"
-        required: true
+        required: false
         type: string
       requested_by:
         description: "Email of the user who requested the change"
