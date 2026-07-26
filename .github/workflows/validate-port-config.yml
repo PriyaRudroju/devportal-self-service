@@ -31,6 +31,5 @@ jobs:
       - name: Plan Port config for ${{ matrix.env }}
         env:
           API_GATEWAY_URL: ${{ vars.API_GATEWAY_URL }}
-          GITHUB_INSTALLATION_ID: ${{ vars.GITHUB_INSTALLATION_ID }}
           TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
-        run: python scripts/apply_port_config.py --env ${{ matrix.env }} --plan
+        run: python scripts/apply_port_config.py --env ${{ matrix.env }} --plan --github-mode legacy

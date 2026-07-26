@@ -25,6 +25,8 @@ ENV_OVERRIDE_KEYS = {
 }
 
 ALL_RESOURCES = ("blueprints", "actions", "automations", "workflows")
+GITHUB_MODES = ("legacy", "ocean")
+GITHUB_OCEAN_MARKER = "github-ocean"
 
 
 def load_config(config_path: Path) -> dict[str, str]:
@@ -57,13 +59,50 @@ def substitute(content: str, variables: dict[str, str]) -> str:
     return result
 
 
-def find_unresolved_placeholders(content: str) -> list[str]:
+def find_unresolved_placeholders(content: str, *, require_installation_id: bool = True) -> list[str]:
     issues: list[str] = []
     for match in PLACEHOLDER_PATTERN.finditer(content):
-        issues.append(f"unreplaced placeholder: {{{{{match.group(1)}}}}}")
+        placeholder = match.group(1)
+        if not require_installation_id and placeholder == "GITHUB_INSTALLATION_ID":
+            continue
+        issues.append(f"unreplaced placeholder: {{{{{placeholder}}}}}")
     for match in REPLACE_LITERAL_PATTERN.finditer(content):
+        if not require_installation_id and "GITHUB" in match.group(0) and "INSTALLATION" in match.group(0):
+            continue
         issues.append(f"unreplaced literal: {match.group(0)}")
     return issues
+
+
+def resolve_github_mode(config: dict[str, str], cli_mode: str | None) -> str:
+    if cli_mode:
+        return cli_mode
+    env_mode = os.environ.get("GITHUB_INTEGRATION_MODE", "").strip().lower()
+    if env_mode in GITHUB_MODES:
+        return env_mode
+    config_mode = config.get("GITHUB_INTEGRATION_MODE", "legacy").strip().lower()
+    return config_mode if config_mode in GITHUB_MODES else "legacy"
+
+
+def is_github_ocean_workflow(file_path: Path) -> bool:
+    return GITHUB_OCEAN_MARKER in file_path.read_text(encoding="utf-8")
+
+
+def filter_workflow_files(files: list[Path], github_mode: str) -> list[Path]:
+    if github_mode == "ocean":
+        return files
+
+    filtered: list[Path] = []
+    for file_path in files:
+        if is_github_ocean_workflow(file_path):
+            identifier = file_path.stem
+            try:
+                identifier = json.loads(file_path.read_text(encoding="utf-8")).get("identifier", identifier)
+            except json.JSONDecodeError:
+                pass
+            print(f"SKIP workflow (legacy mode): {identifier} ({file_path.name})")
+            continue
+        filtered.append(file_path)
+    return filtered
 
 
 def get_access_token(api_url: str, client_id: str, client_secret: str) -> str:
@@ -150,11 +189,16 @@ def apply_json_files(
     files: list[Path],
     variables: dict[str, str],
     plan_mode: bool,
+    *,
+    require_installation_id: bool = True,
 ) -> None:
     for file_path in sorted(files):
         raw = file_path.read_text(encoding="utf-8")
         rendered = substitute(raw, variables)
-        issues = find_unresolved_placeholders(rendered)
+        issues = find_unresolved_placeholders(
+            rendered,
+            require_installation_id=require_installation_id,
+        )
         if issues:
             print(f"FAIL {file_path}:", file=sys.stderr)
             for issue in issues:
@@ -230,6 +274,11 @@ def main() -> None:
         help="Comma-separated resource types: blueprints,actions,automations,workflows",
     )
     parser.add_argument("--skip-legacy", action="store_true", help="Skip legacy actions/automations")
+    parser.add_argument(
+        "--github-mode",
+        choices=GITHUB_MODES,
+        help="GitHub integration mode: legacy (Sunset) skips github-ocean workflows",
+    )
     args = parser.parse_args()
 
     plan_mode = args.dry_run or args.plan
@@ -242,7 +291,10 @@ def main() -> None:
     repo_root = Path(args.repo_root)
     env_root = repo_root / "port" / "environments" / args.env
     config_path = env_root / "config.env"
+    config_values = load_config(config_path)
     variables = build_variables(config_path)
+    github_mode = resolve_github_mode(config_values, args.github_mode)
+    require_installation_id = github_mode == "ocean"
 
     client_id = os.environ.get("PORT_CLIENT_ID", "")
     client_secret = os.environ.get("PORT_CLIENT_SECRET", "")
@@ -253,6 +305,7 @@ def main() -> None:
         sys.exit(1)
 
     print(f"{'Planning' if plan_mode else 'Applying'} Port config for environment: {args.env}")
+    print(f"GitHub integration mode: {github_mode}")
     if config_path.is_file():
         print(f"Loaded defaults from {config_path} (env vars override when set)")
     else:
@@ -298,15 +351,20 @@ def main() -> None:
             )
 
     if "workflows" in selected_resources:
+        workflow_files = filter_workflow_files(
+            collect_json_files(env_root / "workflows"),
+            github_mode,
+        )
         apply_json_files(
             api_url,
             token,
             "workflow",
             "/v1/workflows",
             "/v1/workflows/{identifier}",
-            collect_json_files(env_root / "workflows"),
+            workflow_files,
             variables,
             plan_mode,
+            require_installation_id=require_installation_id,
         )
 
     print("Port config apply completed successfully")

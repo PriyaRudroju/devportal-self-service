@@ -15,6 +15,14 @@ on:
         required: false
         type: boolean
         default: true
+      github_integration_mode:
+        description: "GitHub integration mode (legacy=Sunset, ocean=GitHub Ocean)"
+        required: false
+        type: choice
+        options:
+          - legacy
+          - ocean
+        default: legacy
 
 jobs:
   promote:
@@ -28,7 +36,10 @@ jobs:
           source scripts/load_env_config.sh "${{ inputs.target_env }}"
           echo "TFC_WORKSPACE=${TFC_WORKSPACE:-}" >> "$GITHUB_ENV"
           echo "API_GATEWAY_URL=${API_GATEWAY_URL:-}" >> "$GITHUB_ENV"
-          echo "GITHUB_INSTALLATION_ID=${GITHUB_INSTALLATION_ID:-}" >> "$GITHUB_ENV"
+          echo "GITHUB_INTEGRATION_MODE=${GITHUB_INTEGRATION_MODE:-legacy}" >> "$GITHUB_ENV"
+          if [ "${{ inputs.github_integration_mode }}" = "ocean" ]; then
+            echo "GITHUB_INSTALLATION_ID=${GITHUB_INSTALLATION_ID:-}" >> "$GITHUB_ENV"
+          fi
 
       - name: Apply Port configuration to ${{ inputs.target_env }}
         env:
@@ -42,7 +53,7 @@ jobs:
           GITHUB_REPO: devportal-self-service
           AWS_REGION: us-east-2
         run: |
-          ARGS="--env ${{ inputs.target_env }}"
+          ARGS="--env ${{ inputs.target_env }} --github-mode ${{ inputs.github_integration_mode }}"
           if [ "${{ inputs.skip_legacy }}" = "true" ]; then
             ARGS="$ARGS --skip-legacy"
           fi
@@ -51,5 +62,6 @@ jobs:
       - name: Summary
         run: |
           echo "Promoted Port config for: ${{ inputs.target_env }}"
+          echo "GitHub mode: ${{ inputs.github_integration_mode }}"
           echo "TFC workspace: ${TFC_WORKSPACE:-not set}"
           echo "API Gateway: ${API_GATEWAY_URL:-not set}"

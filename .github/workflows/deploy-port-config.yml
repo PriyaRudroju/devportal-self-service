@@ -24,6 +24,14 @@ on:
         required: false
         type: boolean
         default: false
+      github_integration_mode:
+        description: "GitHub integration mode (legacy=Sunset, ocean=GitHub Ocean)"
+        required: false
+        type: choice
+        options:
+          - legacy
+          - ocean
+        default: legacy
 
 jobs:
   apply:
@@ -45,9 +53,11 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "env=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
             echo "skip_legacy=${{ inputs.skip_legacy }}" >> "$GITHUB_OUTPUT"
+            echo "github_mode=${{ inputs.github_integration_mode }}" >> "$GITHUB_OUTPUT"
           else
             echo "env=dev" >> "$GITHUB_OUTPUT"
             echo "skip_legacy=false" >> "$GITHUB_OUTPUT"
+            echo "github_mode=legacy" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Load environment config defaults
@@ -55,7 +65,10 @@ jobs:
           source scripts/load_env_config.sh "${{ steps.target.outputs.env }}"
           echo "TFC_WORKSPACE=${TFC_WORKSPACE:-}" >> "$GITHUB_ENV"
           echo "API_GATEWAY_URL=${API_GATEWAY_URL:-}" >> "$GITHUB_ENV"
-          echo "GITHUB_INSTALLATION_ID=${GITHUB_INSTALLATION_ID:-}" >> "$GITHUB_ENV"
+          echo "GITHUB_INTEGRATION_MODE=${GITHUB_INTEGRATION_MODE:-legacy}" >> "$GITHUB_ENV"
+          if [ "${{ steps.target.outputs.github_mode }}" = "ocean" ]; then
+            echo "GITHUB_INSTALLATION_ID=${GITHUB_INSTALLATION_ID:-}" >> "$GITHUB_ENV"
+          fi
 
       - name: Apply Port configuration
         env:
@@ -69,7 +82,7 @@ jobs:
           GITHUB_REPO: devportal-self-service
           AWS_REGION: us-east-2
         run: |
-          ARGS="--env ${{ steps.target.outputs.env }}"
+          ARGS="--env ${{ steps.target.outputs.env }} --github-mode ${{ steps.target.outputs.github_mode }}"
           if [ "${{ steps.target.outputs.skip_legacy }}" = "true" ]; then
             ARGS="$ARGS --skip-legacy"
           fi
@@ -78,5 +91,6 @@ jobs:
       - name: Summary
         run: |
           echo "Applied Port config for: ${{ steps.target.outputs.env }}"
+          echo "GitHub mode: ${{ steps.target.outputs.github_mode }}"
           echo "TFC workspace: ${TFC_WORKSPACE:-not set}"
           echo "API Gateway: ${API_GATEWAY_URL:-not set}"
