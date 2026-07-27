@@ -44,20 +44,13 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    environment:
-      ${{ 
-        inputs.environment == 'prod' && 'production' ||
-        inputs.environment == 'dev' && 'development' ||
-        inputs.environment
-      }}
+    environment: ${{ inputs.environment }}
 
 
     steps:
 
-
     - name: Checkout Repository
       uses: actions/checkout@v4
-
 
 
     - name: Extract Port Run ID
@@ -97,6 +90,7 @@ jobs:
     - name: Report Start To Port
       if: steps.port.outputs.port_run_id != ''
       uses: port-labs/port-github-action@v1
+
       with:
 
         clientId: ${{ secrets.PORT_CLIENT_ID }}
@@ -111,7 +105,9 @@ jobs:
 
 
 
-    - uses: hashicorp/setup-terraform@v3
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
       with:
 
         cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
@@ -120,20 +116,22 @@ jobs:
 
     - name: Terraform Init
       working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
+
       run: terraform init
 
 
 
     - name: Terraform Plan
       id: plan
+
       working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
 
       run: |
 
         terraform plan \
-        -var="instance_name=${{ inputs.instance_name }}" \
-        -var="instance_type=${{ inputs.instance_type }}" \
-        -out=tfplan
+          -var="instance_name=${{ inputs.instance_name }}" \
+          -var="instance_type=${{ inputs.instance_type }}" \
+          -out=tfplan
 
 
 
@@ -160,6 +158,8 @@ jobs:
 
 
     - name: Update Port Catalog Success
+
+      if: success()
 
       uses: port-labs/port-github-action@v1
 
@@ -193,7 +193,7 @@ jobs:
 
     - name: Report Port Workflow Success
 
-      if: steps.port.outputs.port_run_id != ''
+      if: success() && steps.port.outputs.port_run_id != ''
 
       uses: port-labs/port-github-action@v1
 
@@ -215,7 +215,7 @@ jobs:
 
     - name: Report Failure To Port
 
-      if: failure()
+      if: failure() && steps.port.outputs.port_run_id != ''
 
       uses: port-labs/port-github-action@v1
 
