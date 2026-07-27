@@ -2,7 +2,7 @@
   "identifier": "provision_ec2_after_approval",
   "title": "Provision EC2 After Teams Approval",
   "icon": "AWS",
-  "description": "Triggers GitHub provisioning when EC2 change request moves from pending to approved",
+  "description": "Triggers GitHub provisioning when catalog entity moves pending to approved",
   "category": "Infra",
   "nodes": [
     {

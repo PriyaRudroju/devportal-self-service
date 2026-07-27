@@ -7,12 +7,10 @@ on:
         description: "EC2 instance name tag"
         required: true
         type: string
-
       instance_type:
         description: "EC2 instance type"
         required: true
         type: string
-
       environment:
         description: "Target environment"
         required: true
@@ -21,214 +19,166 @@ on:
           - dev
           - qa
           - prod
-
       port_context:
         description: "Port run context JSON"
-        required: false
-        default: '{"runId":""}'
+        required: true
         type: string
-
       requested_by:
-        description: "Email of requester"
+        description: "Email of the user who requested the change"
         required: false
         type: string
-
 
 env:
   TF_CLOUD_ORGANIZATION: ${{ secrets.TF_CLOUD_ORGANIZATION }}
 
-
 jobs:
-
   terraform:
-
     runs-on: ubuntu-latest
-
-    environment: ${{ inputs.environment }}
-
+    environment: >-
+      ${{
+        inputs.environment == 'prod' && 'production' ||
+        inputs.environment == 'dev' && 'development' ||
+        inputs.environment
+      }}
 
     steps:
-
-    - name: Checkout Repository
-      uses: actions/checkout@v4
-
-
-    - name: Extract Port Run ID
-      id: port
-      shell: bash
-      run: |
-
-        PORT_RUN_ID=$(echo '${{ inputs.port_context }}' | jq -r '.runId // empty')
-
-        echo "port_run_id=$PORT_RUN_ID" >> $GITHUB_OUTPUT
-
-        echo "Port Run ID: $PORT_RUN_ID"
-
-
-
-    - name: Load environment config
-      id: env_config
-      run: |
-
-        source scripts/load_env_config.sh "${{ inputs.environment }}"
-
-        echo "tfc_ec2_dir=${TFC_EC2_DIR}" >> "$GITHUB_OUTPUT"
-
-
-
-    - name: Log Inputs
-      run: |
-
-        echo "Instance: ${{ inputs.instance_name }}"
-        echo "Type: ${{ inputs.instance_type }}"
-        echo "Environment: ${{ inputs.environment }}"
-        echo "Requester: ${{ inputs.requested_by }}"
-        echo "Port Run ID: ${{ steps.port.outputs.port_run_id }}"
-
-
-
-    - name: Report Start To Port
-      if: steps.port.outputs.port_run_id != ''
-      uses: port-labs/port-github-action@v1
-
-      with:
-
-        clientId: ${{ secrets.PORT_CLIENT_ID }}
-
-        clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-
-        operation: PATCH_RUN
-
-        runId: ${{ steps.port.outputs.port_run_id }}
-
-        summary: "Starting EC2 provisioning"
-
-
-
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
-
-      with:
-
-        cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
-
-
-
-    - name: Terraform Init
-      working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
-
-      run: terraform init
-
-
-
-    - name: Terraform Plan
-      id: plan
-
-      working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
-
-      run: |
-
-        terraform plan \
-          -var="instance_name=${{ inputs.instance_name }}" \
-          -var="instance_type=${{ inputs.instance_type }}" \
-          -out=tfplan
-
-
-
-    - name: Terraform Apply
-
-      working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
-
-      run: terraform apply -auto-approve tfplan
-
-
-
-    - name: Capture Terraform Outputs
-
-      id: tf_outputs
-
-      working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
-
-      run: |
-
-        echo "instance_id=$(terraform output -raw instance_id)" >> $GITHUB_OUTPUT
-
-        echo "private_ip=$(terraform output -raw private_ip)" >> $GITHUB_OUTPUT
-
-
-
-    - name: Update Port Catalog Success
-
-      if: success()
-
-      uses: port-labs/port-github-action@v1
-
-      with:
-
-        clientId: ${{ secrets.PORT_CLIENT_ID }}
-
-        clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-
-        operation: UPSERT
-
-        blueprint: ec2Instance
-
-        identifier: ${{ inputs.instance_name }}
-
-        title: EC2 ${{ inputs.instance_name }}
-
-        properties: |
-
-          {
-            "instanceName": "${{ inputs.instance_name }}",
-            "instanceType": "${{ inputs.instance_type }}",
-            "environment": "${{ inputs.environment }}",
-            "instanceId": "${{ steps.tf_outputs.outputs.instance_id }}",
-            "executionStatus": "completed",
-            "approvalStatus": "approved",
-            "requestedBy": "${{ inputs.requested_by }}"
-          }
-
-
-
-    - name: Report Port Workflow Success
-
-      if: success() && steps.port.outputs.port_run_id != ''
-
-      uses: port-labs/port-github-action@v1
-
-      with:
-
-        clientId: ${{ secrets.PORT_CLIENT_ID }}
-
-        clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-
-        operation: PATCH_RUN
-
-        runId: ${{ steps.port.outputs.port_run_id }}
-
-        summary: "EC2 provisioning completed successfully"
-
-        status: SUCCESS
-
-
-
-    - name: Report Failure To Port
-
-      if: failure() && steps.port.outputs.port_run_id != ''
-
-      uses: port-labs/port-github-action@v1
-
-      with:
-
-        clientId: ${{ secrets.PORT_CLIENT_ID }}
-
-        clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
-
-        operation: PATCH_RUN
-
-        runId: ${{ steps.port.outputs.port_run_id }}
-
-        summary: "EC2 provisioning failed"
-
-        status: FAILURE
+      - uses: actions/checkout@v4
+
+      - name: Load environment config
+        id: env_config
+        run: |
+          source scripts/load_env_config.sh "${{ inputs.environment }}"
+          echo "tfc_ec2_dir=${TFC_EC2_DIR}" >> "$GITHUB_OUTPUT"
+          echo "tfc_workspace=${TFC_WORKSPACE:-}" >> "$GITHUB_ENV"
+
+      - name: Log inputs
+        run: |
+          echo "Instance name: ${{ inputs.instance_name }}"
+          echo "Instance type: ${{ inputs.instance_type }}"
+          echo "Environment: ${{ inputs.environment }}"
+          echo "Requested by: ${{ inputs.requested_by }}"
+          echo "Port context: ${{ inputs.port_context }}"
+
+      - name: Parse Port context
+        id: port
+        env:
+          PORT_CONTEXT: ${{ inputs.port_context }}
+        run: |
+          RUN_ID=$(echo "$PORT_CONTEXT" | jq -r '.runId // empty')
+          if [ -z "$RUN_ID" ]; then
+            echo "port_context must be JSON with runId, got: $PORT_CONTEXT" >&2
+            exit 1
+          fi
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Report start to Port
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ steps.port.outputs.run_id }}
+          summary: "Starting EC2 provisioning for ${{ inputs.instance_name }}"
+          portContext: ${{ inputs.port_context }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Terraform Init
+        working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
+        run: terraform init
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
+        continue-on-error: true
+        run: |
+          terraform plan \
+            -var="instance_name=${{ inputs.instance_name }}" \
+            -var="instance_type=${{ inputs.instance_type }}" \
+            -out=tfplan \
+            -detailed-exitcode
+
+      - name: Terraform Apply
+        if: steps.plan.outputs.exitcode == '2'
+        working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Capture Terraform outputs
+        if: success()
+        id: tf_outputs
+        working-directory: ${{ steps.env_config.outputs.tfc_ec2_dir }}
+        run: |
+          echo "instance_id=$(terraform output -raw instance_id)" >> "$GITHUB_OUTPUT"
+          echo "private_ip=$(terraform output -raw private_ip)" >> "$GITHUB_OUTPUT"
+
+      - name: Report success to Port catalog
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: UPSERT
+          blueprint: ec2Instance
+          identifier: ${{ steps.port.outputs.run_id }}
+          title: EC2 ${{ inputs.instance_name }}
+          properties: |
+            {
+              "instanceName": "${{ inputs.instance_name }}",
+              "instanceType": "${{ inputs.instance_type }}",
+              "environment": "${{ inputs.environment }}",
+              "region": "us-east-1",
+              "instanceId": "${{ steps.tf_outputs.outputs.instance_id }}",
+              "approvalStatus": "approved",
+              "executionStatus": "completed",
+              "requestedBy": "${{ inputs.requested_by }}",
+              "portRunId": "${{ steps.port.outputs.run_id }}"
+            }
+          portContext: ${{ inputs.port_context }}
+
+      - name: Log success to Port
+        if: success()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ steps.port.outputs.run_id }}
+          summary: "EC2 instance ${{ inputs.instance_name }} (${{ steps.tf_outputs.outputs.instance_id }}) provisioned successfully"
+          portContext: ${{ inputs.port_context }}
+          status: "SUCCESS"
+
+      - name: Report failure to Port catalog
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: UPSERT
+          blueprint: ec2Instance
+          identifier: ${{ steps.port.outputs.run_id }}
+          title: EC2 ${{ inputs.instance_name }}
+          properties: |
+            {
+              "instanceName": "${{ inputs.instance_name }}",
+              "instanceType": "${{ inputs.instance_type }}",
+              "environment": "${{ inputs.environment }}",
+              "region": "us-east-1",
+              "approvalStatus": "approved",
+              "executionStatus": "failed",
+              "requestedBy": "${{ inputs.requested_by }}",
+              "portRunId": "${{ steps.port.outputs.run_id }}"
+            }
+          portContext: ${{ inputs.port_context }}
+
+      - name: Report failure to Port
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: PATCH_RUN
+          runId: ${{ steps.port.outputs.run_id }}
+          summary: "EC2 provisioning failed for ${{ inputs.instance_name }} in ${{ inputs.environment }}"
+          portContext: ${{ inputs.port_context }}

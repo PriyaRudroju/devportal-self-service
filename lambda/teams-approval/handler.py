@@ -221,6 +221,32 @@ def _normalize_ec2_request(payload: dict) -> dict:
     }
 
 
+def handle_teams_notify(event: dict) -> dict:
+    """Send Teams approval card only (Port Workflow owns catalog UPSERT)."""
+    payload = _normalize_ec2_request(_parse_body(event))
+    run_id = payload["runId"]
+    instance_name = payload["instanceName"]
+    instance_type = payload["instanceType"]
+
+    if not run_id:
+        return _response(400, {"error": "runId is required"})
+    if not instance_name:
+        return _response(400, {"error": "instance_name is required"})
+    if not instance_type:
+        return _response(400, {"error": "instance_type is required"})
+
+    api_base_url = _api_base_url(event)
+    _post_teams_notification(payload, api_base_url)
+
+    return _response(
+        200,
+        {
+            "message": "Teams approval notification sent",
+            "runId": run_id,
+        },
+    )
+
+
 def handle_ec2_request(event: dict) -> dict:
     payload = _normalize_ec2_request(_parse_body(event))
     run_id = payload["runId"]
@@ -278,7 +304,7 @@ def handle_approval_decision(event: dict) -> dict:
             "approvalStatus": "approved",
             "executionStatus": "in_progress",
         }
-        message = "Request approved. Port automation will trigger GitHub if configured."
+        message = "Request approved. Port workflow will trigger GitHub if configured."
     else:
         properties = {
             "approvalStatus": "rejected",
@@ -310,6 +336,9 @@ def lambda_handler(event, context):
     try:
         method = (event.get("requestContext", {}).get("http", {}) or {}).get("method", "")
         raw_path = event.get("rawPath") or event.get("path") or ""
+
+        if method == "POST" and _route_matches(raw_path, "/teams/notify"):
+            return handle_teams_notify(event)
 
         if method == "POST" and _route_matches(raw_path, "/ec2/request"):
             return handle_ec2_request(event)

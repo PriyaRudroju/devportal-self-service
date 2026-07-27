@@ -15,7 +15,7 @@ on:
           - dev
       port_context:
         description: "Port run context"
-        required: false
+        required: true
         type: string
 
 env:
