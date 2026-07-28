@@ -12,10 +12,10 @@ on:
         required: true
         type: string
       environment:
-        description: "Target environment (fixed to dev on this branch)"
+        description: "Target environment (fixed to prod on this branch)"
         required: false
         type: string
-        default: dev
+        default: prod
       port_context:
         description: "Port run context JSON"
         required: true
@@ -27,12 +27,12 @@ on:
 
 env:
   TF_CLOUD_ORGANIZATION: ${{ secrets.TF_CLOUD_ORGANIZATION }}
-  TARGET_ENV: dev
+  TARGET_ENV: prod
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    environment: development
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
       - name: Load environment config
         id: env_config
         run: |
-          source scripts/load_env_config.sh dev
+          source scripts/load_env_config.sh prod
           echo "tfc_ec2_dir=${TFC_EC2_DIR}" >> "$GITHUB_OUTPUT"
           echo "tfc_workspace=${TFC_WORKSPACE:-}" >> "$GITHUB_ENV"
 
@@ -120,7 +120,7 @@ jobs:
             {
               "instanceName": "${{ inputs.instance_name }}",
               "instanceType": "${{ inputs.instance_type }}",
-              "environment": "dev",
+              "environment": "prod",
               "region": "us-east-1",
               "instanceId": "${{ steps.tf_outputs.outputs.instance_id }}",
               "approvalStatus": "approved",
@@ -156,7 +156,7 @@ jobs:
             {
               "instanceName": "${{ inputs.instance_name }}",
               "instanceType": "${{ inputs.instance_type }}",
-              "environment": "dev",
+              "environment": "prod",
               "region": "us-east-1",
               "approvalStatus": "approved",
               "executionStatus": "failed",
@@ -173,5 +173,5 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           operation: PATCH_RUN
           runId: ${{ steps.port.outputs.run_id }}
-          summary: "EC2 provisioning failed for ${{ inputs.instance_name }} in dev"
+          summary: "EC2 provisioning failed for ${{ inputs.instance_name }} in prod"
           portContext: ${{ inputs.port_context }}
