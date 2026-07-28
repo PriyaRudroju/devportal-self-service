@@ -34,3 +34,6 @@ bin/
 # Python
 __pycache__/
 *.pyc
+
+# Local migration staging (not committed)
+.migration-staging/

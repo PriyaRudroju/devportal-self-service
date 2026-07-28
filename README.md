@@ -44,18 +44,20 @@ Approval happens in Teams/Lambda, not Port native approval. GitHub runs only aft
 .github/workflows/
   provision-s3-bucket.yml              # S3 GitHub workflow
   change-ec2-instance.yml              # EC2 GitHub workflow (post-approval)
+  deploy-port-config.yml               # Port GitOps apply (branch-specific trigger)
+  validate-port-config.yml             # Port GitOps plan on PR (branch-specific)
 lambda/
   teams-approval/                      # Port UPSERT + Teams notification Lambda
 port/
-  blueprints/
+  resources/                           # Shared blueprints (all branches)
     s3-bucket.json
     ec2-change-request.json
-  actions/
-    provision-s3-bucket.json
-    change-ec2-instance.json           # WEBHOOK → Lambda /ec2/request
-  automations/
-    trigger-github-on-ec2-approved.json
-    deprecated/                        # Old Port-native approval automations
+  environments/                        # ONE environment per Git branch
+    config.env                         # PORT_ENV=dev|qa|prod
+    workflows/                         # Port Workflows
+    actions/                           # Legacy actions (optional)
+    automations/                       # Legacy automations (optional)
+  PROMOTION.md                         # Three-branch promotion runbook
 terraform/
   modules/
     s3-bucket/
@@ -64,46 +66,41 @@ terraform/
   environments/
     dev/                               # S3 (workspace: dev-portal-s3-dev)
     dev-ec2/                           # EC2 (workspace: dev-portal-ec2-dev)
-    dev-integration/                   # Lambda + API Gateway (workspace: dev-portal-integration-dev)
-port/environments/                     # GitOps Port config per environment (dev/qa/prod)
-  dev/config.env                       # Dev URLs, TFC workspace, substitution vars
-  dev/workflows/                       # Port Workflows (preferred)
-  dev/actions/                         # Legacy actions (optional)
-  dev/automations/                     # Legacy automations (optional)
-  qa/ ... prod/ ...                    # Same layout; unique config.env per env
+    dev-integration/                   # Lambda + API Gateway
 scripts/
   apply_port_config.py                 # Apply Port JSON to single org via API
   load_env_config.sh                   # Source config.env in CI
+docs/
+  GITHUB_SETUP.md                      # Branch protection and GitHub Environments
 ```
 
-## Port config GitOps (dev → qa → prod)
+## Port config GitOps (three-branch: dev → qa → main)
 
-Port configuration lives as JSON in Git under `port/environments/`. All environments apply to the **same Port org** (`org_NaOn60IA22iSZcWo`). Only substituted values (API URLs, Terraform workspace names, form enums) change per environment.
+Port configuration lives as JSON in Git. Each **Git branch** maps to one Port environment in the **same Port org** (`org_NaOn60IA22iSZcWo`). **Production (`main`) is the source of truth**; `dev` and `qa` are playgrounds.
 
 **Talking point for stakeholders:**
 
-> Port configuration is JSON in Git under `port/environments/`. Dev applies automatically on merge. QA and Prod use a gated promote workflow with GitHub Environment approvers. Same Port org throughout — only webhook URLs and workspace names change per environment.
+> Port configuration is JSON in Git. Each branch auto-deploys its environment on push — no manual env selection in CI. Dev and QA are playgrounds; production on main is canonical. Promotion is Git PR flow: dev → qa → main.
 
 ### How promotion works
 
 | Stage | What happens |
 |---|---|
-| Edit dev | Change JSON under `port/environments/dev/` or shared `port/blueprints/` |
-| PR | `validate-port-config.yml` runs `--plan` for dev, qa, and prod |
-| Merge to `main` | `deploy-port-config.yml` applies **dev** to Port automatically |
-| Promote qa/prod | Sync JSON via PR (keep each `config.env` unique), then run **Promote Port Config** workflow |
+| Feature work | PR to **`dev`** → validate plans dev → merge applies dev |
+| Promote to QA | PR **`dev` → `qa`** → merge applies qa (keep qa `config.env`) |
+| Promote to Prod | PR **`qa` → `main`** → merge applies prod (approvers) |
 
-See [`port/environments/PROMOTION.md`](port/environments/PROMOTION.md) for the full runbook.
+See [`port/PROMOTION.md`](port/PROMOTION.md) and [`docs/GITHUB_SETUP.md`](docs/GITHUB_SETUP.md) for the full runbook and GitHub setup.
 
 ### GitHub Environment setup (one-time)
 
 Create GitHub Environments: `development`, `qa`, `production` (prod requires reviewers).
 
-| GitHub Environment | Variables | Secrets |
-|---|---|---|
-| `development` | `API_GATEWAY_URL`, `GITHUB_INSTALLATION_ID`, `TFC_WORKSPACE` | `PORT_CLIENT_ID`, `PORT_CLIENT_SECRET` |
-| `qa` | QA API URL, QA TFC workspace | Port creds (same or QA-specific) |
-| `production` | Prod API URL, prod TFC workspace | Prod creds + required reviewers |
+| GitHub Environment | Git branch | Variables | Secrets |
+|---|---|---|---|
+| `development` | `dev` | `API_GATEWAY_URL`, `GITHUB_INSTALLATION_ID`, `TFC_WORKSPACE` | `PORT_CLIENT_ID`, `PORT_CLIENT_SECRET` |
+| `qa` | `qa` | QA API URL, QA TFC workspace | Port creds (same or QA-specific) |
+| `production` | `main` | Prod API URL, prod TFC workspace | Prod creds + required reviewers |
 
 Example dev values:
 
@@ -113,7 +110,7 @@ Example dev values:
 | `TFC_WORKSPACE` | `dev-portal-s3-dev` |
 | `GITHUB_INSTALLATION_ID` | GitHub Ocean app installation ID for this repo |
 
-Variable precedence: `port/environments/<env>/config.env` first, then GitHub Environment variables override in CI.
+Variable precedence: `port/environments/config.env` first, then GitHub Environment variables override in CI.
 
 ### Local validate and apply
 
@@ -125,13 +122,20 @@ python scripts/apply_port_config.py --env dev
 
 Use `--skip-legacy` after migrating fully to Port Workflows. Use `--resources blueprints,workflows` for partial apply.
 
-### CI workflows
+### CI workflows (per branch)
+
+Each branch contains only its Port GitOps workflows:
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `validate-port-config.yml` | PR touching `port/**` | Plan all envs; fail on invalid JSON or unresolved placeholders |
-| `deploy-port-config.yml` | Push to `main` (port changes) | Apply dev config to Port |
-| `promote-port-config.yml` | Manual dispatch | Apply qa or prod with environment gate |
+| `validate-port-config.yml` | PR to current branch | Plan this branch's Port env |
+| `deploy-port-config.yml` | Push to current branch | Apply this branch's Port env |
+
+| Branch | Deploy trigger | Port env |
+|---|---|---|
+| `dev` | Push to `dev` | dev |
+| `qa` | Push to `qa` | qa |
+| `main` | Push to `main` | prod |
 
 ## Setup order (recommended)
 
@@ -237,13 +241,13 @@ Lambda sends this JSON body to the workflow (default `TEAMS_PAYLOAD_FORMAT=workf
 
 **Builder → Data model → + Blueprint → Edit JSON**
 
-Paste [`port/blueprints/ec2-change-request.json`](port/blueprints/ec2-change-request.json).
+Paste [`port/resources/ec2-change-request.json`](port/resources/ec2-change-request.json).
 
 ### Import self-service action
 
 **Self-service → + Action → Edit JSON**
 
-Paste [`port/actions/change-ec2-instance.json`](port/actions/change-ec2-instance.json).
+Paste [`port/environments/actions/change-ec2-instance.json`](port/environments/actions/change-ec2-instance.json) (or apply via `apply_port_config.py` on the `dev` branch).
 
 Replace the webhook URL placeholder:
 
@@ -259,15 +263,7 @@ The action backend is **Webhook** (not GitHub). Do **not** enable Port native ma
 
 **Automations → + Automation → Edit JSON**
 
-Import [`port/automations/trigger-github-on-ec2-approved.json`](port/automations/trigger-github-on-ec2-approved.json) and publish it.
-
-If you previously imported the old automations, disable or delete:
-
-- `upsert_pending_ec2_entity`
-- `notify_teams_ec2_approval`
-- `sync_ec2_entity_on_approval_decision`
-
-Those are kept under [`port/automations/deprecated/`](port/automations/deprecated/) for reference only.
+Import [`port/environments/automations/trigger-github-on-ec2-approved.json`](port/environments/automations/trigger-github-on-ec2-approved.json) and publish it.
 
 ---
 

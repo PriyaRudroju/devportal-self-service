@@ -289,9 +289,18 @@ def main() -> None:
         sys.exit(1)
 
     repo_root = Path(args.repo_root)
-    env_root = repo_root / "port" / "environments" / args.env
+    env_root = repo_root / "port" / "environments"
     config_path = env_root / "config.env"
     config_values = load_config(config_path)
+    port_env = config_values.get("PORT_ENV", "").strip().lower()
+    if port_env and port_env != args.env:
+        print(
+            f"FAIL: --env {args.env} does not match PORT_ENV={port_env} in {config_path}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+    if not port_env:
+        print(f"WARNING: PORT_ENV not set in {config_path}", file=sys.stderr)
     variables = build_variables(config_path)
     github_mode = resolve_github_mode(config_values, args.github_mode)
     require_installation_id = github_mode == "ocean"
@@ -320,7 +329,7 @@ def main() -> None:
             "blueprint",
             "/v1/blueprints",
             "/v1/blueprints/{identifier}",
-            collect_json_files(repo_root / "port" / "blueprints"),
+            collect_json_files(repo_root / "port" / "resources"),
             variables,
             plan_mode,
         )

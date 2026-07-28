@@ -2,7 +2,7 @@ name: Validate Port Config
 
 on:
   pull_request:
-    branches: [main]
+    branches: [dev]
     paths:
       - "port/**"
       - "scripts/apply_port_config.py"
@@ -12,24 +12,15 @@ on:
 jobs:
   plan:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          - env: dev
-            github_environment: development
-          - env: qa
-            github_environment: qa
-          - env: prod
-            github_environment: production
-    environment: ${{ matrix.github_environment }}
+    environment: development
     steps:
       - uses: actions/checkout@v4
 
-      - name: Load config defaults for ${{ matrix.env }}
-        run: source scripts/load_env_config.sh "${{ matrix.env }}"
+      - name: Load config defaults for dev
+        run: source scripts/load_env_config.sh dev
 
-      - name: Plan Port config for ${{ matrix.env }}
+      - name: Plan Port config for dev
         env:
           API_GATEWAY_URL: ${{ vars.API_GATEWAY_URL }}
           TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
-        run: python scripts/apply_port_config.py --env ${{ matrix.env }} --plan --github-mode legacy
+        run: python scripts/apply_port_config.py --env dev --plan --github-mode legacy

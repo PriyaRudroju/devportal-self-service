@@ -1,6 +1,7 @@
 {
   "identifier": "trigger_github_on_ec2_approved",
-  "title": "Trigger GitHub When EC2 Approved",
+  "title": "Trigger GitHub When EC2 Approved (Legacy)",
+  "description": "Legacy automation — prefer Port Workflow provision_ec2_after_approval",
   "trigger": {
     "type": "automation",
     "event": {
@@ -18,9 +19,10 @@
   },
   "invocationMethod": {
     "type": "GITHUB",
-    "org": "PriyaRudroju",
-    "repo": "devportal-self-service",
+    "org": "{{GITHUB_ORG}}",
+    "repo": "{{GITHUB_REPO}}",
     "workflow": "change-ec2-instance.yml",
+    "ref": "dev",
     "reportWorkflowStatus": true,
     "workflowInputs": {
       "instance_name": "{{ .event.diff.after.properties.instanceName }}",

@@ -12,13 +12,10 @@ on:
         required: true
         type: string
       environment:
-        description: "Target environment"
-        required: true
-        type: choice
-        options:
-          - dev
-          - qa
-          - prod
+        description: "Target environment (fixed to dev on this branch)"
+        required: false
+        type: string
+        default: dev
       port_context:
         description: "Port run context JSON"
         required: true
@@ -30,16 +27,12 @@ on:
 
 env:
   TF_CLOUD_ORGANIZATION: ${{ secrets.TF_CLOUD_ORGANIZATION }}
+  TARGET_ENV: dev
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    environment: >-
-      ${{
-        inputs.environment == 'prod' && 'production' ||
-        inputs.environment == 'dev' && 'development' ||
-        inputs.environment
-      }}
+    environment: development
 
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +40,7 @@ jobs:
       - name: Load environment config
         id: env_config
         run: |
-          source scripts/load_env_config.sh "${{ inputs.environment }}"
+          source scripts/load_env_config.sh dev
           echo "tfc_ec2_dir=${TFC_EC2_DIR}" >> "$GITHUB_OUTPUT"
           echo "tfc_workspace=${TFC_WORKSPACE:-}" >> "$GITHUB_ENV"
 
@@ -55,7 +48,7 @@ jobs:
         run: |
           echo "Instance name: ${{ inputs.instance_name }}"
           echo "Instance type: ${{ inputs.instance_type }}"
-          echo "Environment: ${{ inputs.environment }}"
+          echo "Environment: ${TARGET_ENV}"
           echo "Requested by: ${{ inputs.requested_by }}"
           echo "Port context: ${{ inputs.port_context }}"
 
@@ -127,7 +120,7 @@ jobs:
             {
               "instanceName": "${{ inputs.instance_name }}",
               "instanceType": "${{ inputs.instance_type }}",
-              "environment": "${{ inputs.environment }}",
+              "environment": "dev",
               "region": "us-east-1",
               "instanceId": "${{ steps.tf_outputs.outputs.instance_id }}",
               "approvalStatus": "approved",
@@ -163,7 +156,7 @@ jobs:
             {
               "instanceName": "${{ inputs.instance_name }}",
               "instanceType": "${{ inputs.instance_type }}",
-              "environment": "${{ inputs.environment }}",
+              "environment": "dev",
               "region": "us-east-1",
               "approvalStatus": "approved",
               "executionStatus": "failed",
@@ -180,5 +173,5 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           operation: PATCH_RUN
           runId: ${{ steps.port.outputs.run_id }}
-          summary: "EC2 provisioning failed for ${{ inputs.instance_name }} in ${{ inputs.environment }}"
+          summary: "EC2 provisioning failed for ${{ inputs.instance_name }} in dev"
           portContext: ${{ inputs.port_context }}

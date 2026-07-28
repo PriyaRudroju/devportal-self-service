@@ -2,73 +2,27 @@ name: Deploy Port Config
 
 on:
   push:
-    branches: [main]
+    branches: [dev]
     paths:
       - "port/**"
       - "scripts/apply_port_config.py"
       - "scripts/load_env_config.sh"
       - ".github/workflows/deploy-port-config.yml"
   workflow_dispatch:
-    inputs:
-      environment:
-        description: "Port environment folder to apply"
-        required: true
-        type: choice
-        options:
-          - dev
-          - qa
-          - prod
-        default: dev
-      skip_legacy:
-        description: "Skip legacy actions/automations (workflows only)"
-        required: false
-        type: boolean
-        default: false
-      github_integration_mode:
-        description: "GitHub integration mode (legacy=Sunset, ocean=GitHub Ocean)"
-        required: false
-        type: choice
-        options:
-          - legacy
-          - ocean
-        default: legacy
 
 jobs:
   apply:
     runs-on: ubuntu-latest
-    environment: >-
-      ${{
-        github.event_name == 'workflow_dispatch' && (
-          inputs.environment == 'prod' && 'production' ||
-          inputs.environment == 'dev' && 'development' ||
-          inputs.environment
-        ) || 'development'
-      }}
+    environment: development
     steps:
       - uses: actions/checkout@v4
 
-      - name: Resolve target environment
-        id: target
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "env=${{ inputs.environment }}" >> "$GITHUB_OUTPUT"
-            echo "skip_legacy=${{ inputs.skip_legacy }}" >> "$GITHUB_OUTPUT"
-            echo "github_mode=${{ inputs.github_integration_mode }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "env=dev" >> "$GITHUB_OUTPUT"
-            echo "skip_legacy=false" >> "$GITHUB_OUTPUT"
-            echo "github_mode=legacy" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Load environment config defaults
         run: |
-          source scripts/load_env_config.sh "${{ steps.target.outputs.env }}"
+          source scripts/load_env_config.sh dev
           echo "TFC_WORKSPACE=${TFC_WORKSPACE:-}" >> "$GITHUB_ENV"
           echo "API_GATEWAY_URL=${API_GATEWAY_URL:-}" >> "$GITHUB_ENV"
           echo "GITHUB_INTEGRATION_MODE=${GITHUB_INTEGRATION_MODE:-legacy}" >> "$GITHUB_ENV"
-          if [ "${{ steps.target.outputs.github_mode }}" = "ocean" ]; then
-            echo "GITHUB_INSTALLATION_ID=${GITHUB_INSTALLATION_ID:-}" >> "$GITHUB_ENV"
-          fi
 
       - name: Apply Port configuration
         env:
@@ -81,16 +35,10 @@ jobs:
           GITHUB_ORG: PriyaRudroju
           GITHUB_REPO: devportal-self-service
           AWS_REGION: us-east-2
-        run: |
-          ARGS="--env ${{ steps.target.outputs.env }} --github-mode ${{ steps.target.outputs.github_mode }}"
-          if [ "${{ steps.target.outputs.skip_legacy }}" = "true" ]; then
-            ARGS="$ARGS --skip-legacy"
-          fi
-          python scripts/apply_port_config.py $ARGS
+        run: python scripts/apply_port_config.py --env dev --github-mode legacy
 
       - name: Summary
         run: |
-          echo "Applied Port config for: ${{ steps.target.outputs.env }}"
-          echo "GitHub mode: ${{ steps.target.outputs.github_mode }}"
+          echo "Applied Port config for: dev (push to dev branch)"
           echo "TFC workspace: ${TFC_WORKSPACE:-not set}"
           echo "API Gateway: ${API_GATEWAY_URL:-not set}"
