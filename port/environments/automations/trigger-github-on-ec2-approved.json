@@ -22,7 +22,7 @@
     "org": "{{GITHUB_ORG}}",
     "repo": "{{GITHUB_REPO}}",
     "workflow": "change-ec2-instance.yml",
-    "ref": "dev",
+    "ref": "qa",
     "reportWorkflowStatus": true,
     "workflowInputs": {
       "instance_name": "{{ .event.diff.after.properties.instanceName }}",

@@ -2,7 +2,7 @@ name: Deploy Port Config
 
 on:
   push:
-    branches: [dev]
+    branches: [qa]
     paths:
       - "port/**"
       - "scripts/apply_port_config.py"
@@ -13,13 +13,13 @@ on:
 jobs:
   apply:
     runs-on: ubuntu-latest
-    environment: development
+    environment: qa
     steps:
       - uses: actions/checkout@v4
 
       - name: Load environment config defaults
         run: |
-          source scripts/load_env_config.sh dev
+          source scripts/load_env_config.sh qa
           echo "TFC_WORKSPACE=${TFC_WORKSPACE:-}" >> "$GITHUB_ENV"
           echo "API_GATEWAY_URL=${API_GATEWAY_URL:-}" >> "$GITHUB_ENV"
           echo "GITHUB_INTEGRATION_MODE=${GITHUB_INTEGRATION_MODE:-legacy}" >> "$GITHUB_ENV"
@@ -35,10 +35,10 @@ jobs:
           GITHUB_ORG: PriyaRudroju
           GITHUB_REPO: devportal-self-service
           AWS_REGION: us-east-2
-        run: python scripts/apply_port_config.py --env dev --github-mode legacy
+        run: python scripts/apply_port_config.py --env qa --github-mode legacy
 
       - name: Summary
         run: |
-          echo "Applied Port config for: dev (push to dev branch)"
+          echo "Applied Port config for: qa (push to qa branch)"
           echo "TFC workspace: ${TFC_WORKSPACE:-not set}"
           echo "API Gateway: ${API_GATEWAY_URL:-not set}"

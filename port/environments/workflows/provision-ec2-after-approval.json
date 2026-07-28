@@ -29,7 +29,7 @@
       "title": "Trigger GitHub EC2 Workflow",
       "config": {
         "type": "INTEGRATION_ACTION",
-        "installationId": "147088290",
+        "installationId": "{{GITHUB_INSTALLATION_ID}}",
         "integrationProvider": "github-ocean",
         "integrationInvocationType": "dispatch_workflow",
         "integrationActionExecutionProperties": {

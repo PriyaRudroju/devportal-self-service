@@ -26,8 +26,8 @@
             "environment": {
               "title": "Environment",
               "type": "string",
-              "enum": ["dev"],
-              "default": "dev"
+              "enum": ["qa"],
+              "default": "qa"
             }
           },
           "required": ["instance_name", "instance_type", "environment"]
