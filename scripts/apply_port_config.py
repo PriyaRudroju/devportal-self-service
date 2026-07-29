@@ -18,6 +18,7 @@ REPLACE_LITERAL_PATTERN = re.compile(r"REPLACE_[A-Z0-9_]+")
 ENV_OVERRIDE_KEYS = {
     "API_GATEWAY_URL",
     "GITHUB_INSTALLATION_ID",
+    "LEGACY_GITHUB_INSTALLATION_ID",
     "GITHUB_ORG",
     "GITHUB_REPO",
     "AWS_REGION",
@@ -103,6 +104,62 @@ def filter_workflow_files(files: list[Path], github_mode: str) -> list[Path]:
             continue
         filtered.append(file_path)
     return filtered
+
+
+def resolve_installation_id(variables: dict[str, str]) -> str:
+    for key in ("GITHUB_INSTALLATION_ID", "LEGACY_GITHUB_INSTALLATION_ID"):
+        value = variables.get(key, "").strip()
+        if value:
+            return value
+    return os.environ.get("GITHUB_INSTALLATION_ID", "").strip()
+
+
+def prepare_action_payload(payload: dict, variables: dict[str, str]) -> dict:
+    """Normalize GitHub backends for Port API (hosted GitHub rejects org/repo on type GITHUB)."""
+    invocation = payload.get("invocationMethod")
+    if not isinstance(invocation, dict):
+        return payload
+
+    inv_type = invocation.get("type")
+    if inv_type == "INTEGRATION_ACTION":
+        return payload
+
+    if inv_type != "GITHUB":
+        return payload
+
+    workflow_inputs = dict(invocation.get("workflowInputs") or {})
+    ref = invocation.pop("ref", None)
+    org = invocation.pop("org", None) or variables.get("GITHUB_ORG", "")
+    repo = invocation.pop("repo", None) or variables.get("GITHUB_REPO", "")
+    workflow = invocation.get("workflow")
+    report_status = invocation.get("reportWorkflowStatus", True)
+
+    if ref and "ref" not in workflow_inputs:
+        workflow_inputs["ref"] = ref
+
+    installation_id = resolve_installation_id(variables)
+    if installation_id:
+        payload["invocationMethod"] = {
+            "type": "INTEGRATION_ACTION",
+            "installationId": installation_id,
+            "integrationActionType": "dispatch_workflow",
+            "integrationActionExecutionProperties": {
+                "org": org,
+                "repo": repo,
+                "workflow": workflow,
+                "reportWorkflowStatus": report_status,
+                "workflowInputs": workflow_inputs,
+            },
+        }
+        return payload
+
+    payload["invocationMethod"] = {
+        "type": "GITHUB",
+        "workflow": workflow,
+        "reportWorkflowStatus": report_status,
+        "workflowInputs": workflow_inputs,
+    }
+    return payload
 
 
 def get_access_token(api_url: str, client_id: str, client_secret: str) -> str:
@@ -210,6 +267,9 @@ def apply_json_files(
         except json.JSONDecodeError as exc:
             print(f"FAIL {file_path}: invalid JSON ({exc})", file=sys.stderr)
             sys.exit(1)
+
+        if resource_label in {"action", "automation"}:
+            payload = prepare_action_payload(payload, variables)
 
         identifier = payload.get("identifier")
         if not identifier:
