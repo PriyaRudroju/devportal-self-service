@@ -86,5 +86,6 @@ See [`docs/GITHUB_SETUP.md`](../docs/GITHUB_SETUP.md) for branch protection and 
 | `PORT_ENV` mismatch | `--env` must match `PORT_ENV` in `config.env` on this branch |
 | Deploy workflow skips | Push must touch `port/**` or run workflow manually on the correct branch |
 | Wrong API URL in Port | Check GitHub Environment variable for that env |
-| EC2 workflow runs wrong branch | Automation `ref` must match branch (`dev`, `qa`, `main`) |
+| EC2 workflow runs wrong branch | Pass `ref` in `workflowInputs` (not top-level); must match branch (`dev`, `qa`, `main`) |
+| 422 on automation apply (`org` not allowed) | Remove `org`/`repo` from GITHUB `invocationMethod` — Port-hosted GitHub infers these from the app install |
 | 409 on create | Normal — script retries with PUT/PATCH update |

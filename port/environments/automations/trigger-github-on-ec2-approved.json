@@ -19,12 +19,10 @@
   },
   "invocationMethod": {
     "type": "GITHUB",
-    "org": "{{GITHUB_ORG}}",
-    "repo": "{{GITHUB_REPO}}",
     "workflow": "change-ec2-instance.yml",
-    "ref": "main",
     "reportWorkflowStatus": true,
     "workflowInputs": {
+      "ref": "main",
       "instance_name": "{{ .event.diff.after.properties.instanceName }}",
       "instance_type": "{{ .event.diff.after.properties.instanceType }}",
       "environment": "{{ .event.diff.after.properties.environment }}",

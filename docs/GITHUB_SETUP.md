@@ -94,9 +94,9 @@ Each branch should contain **only** these Port GitOps workflows (plus runtime wo
 
 ## Port GitHub automation branch ref
 
-Legacy EC2 automation (`trigger_github_on_ec2_approved`) includes a `ref` field matching the branch:
+Legacy EC2 automation (`trigger_github_on_ec2_approved`) dispatches via Port-hosted GitHub — **do not** include `org`/`repo` in `invocationMethod` (Port rejects them via API). Pass the branch in `workflowInputs.ref`:
 
-| Branch | `ref` value |
+| Branch | `workflowInputs.ref` |
 |---|---|
 | `dev` | `dev` |
 | `qa` | `qa` |
