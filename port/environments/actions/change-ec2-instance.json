@@ -1,6 +1,6 @@
 {
   "identifier": "change_ec2_instance",
-  "title": "Provision EC2 Instance (GitOps Demo)",
+  "title": "Provision EC2 Instance (Demo)",
   "icon": "AWS",
   "description": "Legacy self-service action — prefer Port Workflow provision_ec2_request",
   "trigger": {
