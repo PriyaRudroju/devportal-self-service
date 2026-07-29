@@ -18,16 +18,22 @@
     }
   },
   "invocationMethod": {
-    "type": "GITHUB",
-    "workflow": "change-ec2-instance.yml",
-    "reportWorkflowStatus": true,
-    "workflowInputs": {
-      "ref": "main",
-      "instance_name": "{{ .event.diff.after.properties.instanceName }}",
-      "instance_type": "{{ .event.diff.after.properties.instanceType }}",
-      "environment": "{{ .event.diff.after.properties.environment }}",
-      "port_context": "{\"runId\":\"{{ .event.diff.after.properties.portRunId }}\"}",
-      "requested_by": "{{ .event.diff.after.properties.requestedBy }}"
+    "type": "INTEGRATION_ACTION",
+    "installationId": "{{GITHUB_INSTALLATION_ID}}",
+    "integrationActionType": "dispatch_workflow",
+    "integrationActionExecutionProperties": {
+      "org": "{{GITHUB_ORG}}",
+      "repo": "{{GITHUB_REPO}}",
+      "workflow": "change-ec2-instance.yml",
+      "reportWorkflowStatus": true,
+      "workflowInputs": {
+        "ref": "main",
+        "instance_name": "{{ .event.diff.after.properties.instanceName }}",
+        "instance_type": "{{ .event.diff.after.properties.instanceType }}",
+        "environment": "{{ .event.diff.after.properties.environment }}",
+        "port_context": "{\"runId\":\"{{ .event.diff.after.properties.portRunId }}\"}",
+        "requested_by": "{{ .event.diff.after.properties.requestedBy }}"
+      }
     }
   },
   "publish": true
