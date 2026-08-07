@@ -27,7 +27,7 @@
       "workflow": "change-ec2-instance.yml",
       "reportWorkflowStatus": true,
       "workflowInputs": {
-        "ref": "dev",
+        "ref": "{{GITHUB_WORKFLOW_REF}}",
         "instance_name": "{{ .event.diff.after.properties.instanceName }}",
         "instance_type": "{{ .event.diff.after.properties.instanceType }}",
         "environment": "{{ .event.diff.after.properties.environment }}",
