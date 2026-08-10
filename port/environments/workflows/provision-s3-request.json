@@ -1,0 +1,79 @@
+{
+  "identifier": "provision_s3_request",
+  "title": "Provision S3 Bucket",
+  "icon": "Bucket",
+  "description": "Request S3 bucket provisioning — creates catalog entity and triggers GitHub via automation (no Teams approval)",
+  "category": "Infra",
+  "nodes": [
+    {
+      "identifier": "trigger",
+      "title": "S3 Request Form",
+      "config": {
+        "type": "SELF_SERVE_TRIGGER",
+        "userInputs": {
+          "properties": {
+            "bucket_name": {
+              "title": "Bucket Name",
+              "type": "string",
+              "description": "Globally unique S3 bucket name"
+            },
+            "environment": {
+              "title": "Environment",
+              "type": "string",
+              "description": "Git branch to run the workflow from (dev playground). Add feature branch names to enum when testing.",
+              "enum": ["dev"],
+              "default": "dev"
+            }
+          },
+          "required": ["bucket_name", "environment"]
+        }
+      }
+    },
+    {
+      "identifier": "create_pending_entity",
+      "title": "Create Pending Catalog Entity",
+      "config": {
+        "type": "UPSERT_ENTITY",
+        "blueprintIdentifier": "s3Bucket",
+        "mapping": {
+          "identifier": "{{ .run.id }}",
+          "title": "S3 {{ .outputs.trigger.bucket_name }}",
+          "properties": {
+            "bucketName": "{{ .outputs.trigger.bucket_name }}",
+            "gitRef": "{{ .outputs.trigger.environment }}",
+            "environment": "dev",
+            "region": "{{AWS_REGION}}",
+            "status": "pending",
+            "requestedBy": "{{ .trigger.by.user.email }}",
+            "portRunId": "{{ .run.id }}"
+          }
+        }
+      }
+    },
+    {
+      "identifier": "mark_ready",
+      "title": "Mark Ready for Provisioning",
+      "config": {
+        "type": "UPSERT_ENTITY",
+        "blueprintIdentifier": "s3Bucket",
+        "mapping": {
+          "identifier": "{{ .run.id }}",
+          "title": "S3 {{ .outputs.trigger.bucket_name }}",
+          "properties": {
+            "status": "ready"
+          }
+        }
+      }
+    }
+  ],
+  "connections": [
+    {
+      "sourceIdentifier": "trigger",
+      "targetIdentifier": "create_pending_entity"
+    },
+    {
+      "sourceIdentifier": "create_pending_entity",
+      "targetIdentifier": "mark_ready"
+    }
+  ]
+}

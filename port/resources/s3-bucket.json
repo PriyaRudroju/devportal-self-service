@@ -12,6 +12,10 @@
         "type": "string",
         "title": "Environment"
       },
+      "gitRef": {
+        "type": "string",
+        "title": "Git Branch Ref"
+      },
       "region": {
         "type": "string",
         "title": "AWS Region",
@@ -20,8 +24,16 @@
       "status": {
         "type": "string",
         "title": "Status",
-        "enum": ["pending", "provisioned", "failed"],
+        "enum": ["pending", "ready", "provisioned", "failed"],
         "default": "pending"
+      },
+      "requestedBy": {
+        "type": "string",
+        "title": "Requested By"
+      },
+      "portRunId": {
+        "type": "string",
+        "title": "Port Run ID"
       }
     },
     "required": ["bucketName", "environment"]

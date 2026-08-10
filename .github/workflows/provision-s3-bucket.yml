@@ -33,9 +33,22 @@ jobs:
 
       - name: Log inputs
         run: |
+          echo "Git ref: ${GITHUB_REF}"
           echo "Bucket name: ${{ inputs.bucket_name }}"
-          echo "Environment: ${{ inputs.environment }}"
+          echo "Terraform environment: ${{ inputs.environment }}"
           echo "Port context: ${{ inputs.port_context }}"
+
+      - name: Parse Port context
+        id: port
+        env:
+          PORT_CONTEXT: ${{ inputs.port_context }}
+        run: |
+          RUN_ID=$(echo "$PORT_CONTEXT" | jq -r '.runId // empty')
+          if [ -z "$RUN_ID" ]; then
+            echo "port_context must be JSON with runId, got: $PORT_CONTEXT" >&2
+            exit 1
+          fi
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
 
       - name: Report start to Port
         uses: port-labs/port-github-action@v1
@@ -43,8 +56,8 @@ jobs:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           operation: PATCH_RUN
-          runId: ${{ fromJson(inputs.port_context).runId }}
-          summary: "Starting S3 bucket provisioning for ${{ inputs.bucket_name }}"
+          runId: ${{ steps.port.outputs.run_id }}
+          summary: "Starting S3 bucket provisioning for ${{ inputs.bucket_name }} (ref ${GITHUB_REF})"
           portContext: ${{ inputs.port_context }}
 
       - uses: hashicorp/setup-terraform@v3
@@ -75,7 +88,7 @@ jobs:
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           operation: UPSERT
           blueprint: s3Bucket
-          identifier: ${{ inputs.bucket_name }}
+          identifier: ${{ steps.port.outputs.run_id }}
           properties: |
             {
               "bucketName": "${{ inputs.bucket_name }}",
@@ -92,7 +105,7 @@ jobs:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           operation: PATCH_RUN
-          runId: ${{ fromJson(inputs.port_context).runId }}
+          runId: ${{ steps.port.outputs.run_id }}
           summary: "S3 bucket ${{ inputs.bucket_name }} provisioned successfully in ${{ inputs.environment }}"
           portContext: ${{ inputs.port_context }}
           status: "SUCCESS"
@@ -103,7 +116,25 @@ jobs:
         with:
           clientId: ${{ secrets.PORT_CLIENT_ID }}
           clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: UPSERT
+          blueprint: s3Bucket
+          identifier: ${{ steps.port.outputs.run_id }}
+          properties: |
+            {
+              "bucketName": "${{ inputs.bucket_name }}",
+              "environment": "${{ inputs.environment }}",
+              "status": "failed",
+              "region": "us-east-1"
+            }
+          portContext: ${{ inputs.port_context }}
+
+      - name: Log failure to Port
+        if: failure()
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
           operation: PATCH_RUN
-          runId: ${{ fromJson(inputs.port_context).runId }}
+          runId: ${{ steps.port.outputs.run_id }}
           summary: "S3 bucket provisioning failed for ${{ inputs.bucket_name }} in ${{ inputs.environment }}"
           portContext: ${{ inputs.port_context }}
