@@ -103,3 +103,14 @@ Legacy EC2 automation (`trigger_github_on_ec2_approved`) includes a `ref` field 
 | `main` | `main` |
 
 Verify Port dispatches to the correct branch after changing default branch settings.
+
+## S3 provisioning branch ref
+
+S3 automation (`trigger_github_on_s3_ready`) passes the Git branch via `workflowInputs.ref` from the catalog entity property **`gitRef`** (set from the form **Environment** field).
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Provision S3 Bucket runs on **`main`** | Empty `ref` in dispatch (Port defaults to repo default branch) | Re-apply Port config from **`dev`** after pushing automation changes |
+| Old workflow inputs (`port_context`) in run logs | Dispatch used **`main`** branch workflow file | Confirm newest run shows branch **`dev`** and input **`port_run_id`** |
+
+The S3 workflow creates the entity with `status: ready` in one step and triggers on **`ENTITY_CREATED`**, so `gitRef` is always present in the automation event payload. Do not use a separate pending→ready update for dispatch — unchanged properties like `gitRef` are omitted from update diffs and produce an empty `ref`.

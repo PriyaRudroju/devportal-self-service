@@ -1,19 +1,16 @@
 {
   "identifier": "trigger_github_on_s3_ready",
   "title": "Trigger GitHub When S3 Ready",
-  "description": "Dispatches S3 provisioning workflow when catalog entity moves pending to ready",
+  "description": "Dispatches S3 provisioning workflow when a ready catalog entity is created",
   "trigger": {
     "type": "automation",
     "event": {
-      "type": "ENTITY_UPDATED",
+      "type": "ENTITY_CREATED",
       "blueprintIdentifier": "s3Bucket"
     },
     "condition": {
       "type": "JQ",
-      "expressions": [
-        ".diff.before.properties.status == \"pending\"",
-        ".diff.after.properties.status == \"ready\""
-      ],
+      "expressions": [".diff.after.properties.status == \"ready\""],
       "combinator": "and"
     }
   },
