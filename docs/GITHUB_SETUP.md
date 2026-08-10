@@ -113,3 +113,4 @@ The S3 Port workflow (`provision_s3_request`) has three steps: form → catalog 
 | Only two steps visible in Port run | Port config not re-applied after workflow update | Run **Deploy Port Config** on **`dev`**, then submit a new request |
 | Provision S3 Bucket runs on **`main`** | Empty `ref` in dispatch (Port defaults to repo default branch) | Confirm step 3 exists and **Environment** = `dev` on the form |
 | Old workflow inputs (`port_context`) in run logs | Dispatch used **`main`** branch workflow file | Confirm newest run shows branch **`dev`** and input **`port_run_id`** |
+| `PATCH_RUN` 404 for `wfr_...` id | Port **workflow** runs use `wfr_` ids; `PATCH_RUN` only applies to **action** runs | S3 workflow uses catalog UPSERT only; Port updates workflow run status via `reportWorkflowStatus` on dispatch |

@@ -56,7 +56,8 @@
       "config": {
         "type": "INTEGRATION_ACTION",
         "installationId": "{{GITHUB_INSTALLATION_ID}}",
-        "integrationActionType": "dispatch_workflow",
+        "integrationProvider": "github-ocean",
+        "integrationInvocationType": "dispatch_workflow",
         "integrationActionExecutionProperties": {
           "org": "{{GITHUB_ORG}}",
           "repo": "{{GITHUB_REPO}}",

@@ -27,7 +27,8 @@ ENV_OVERRIDE_KEYS = {
 
 ALL_RESOURCES = ("blueprints", "actions", "automations", "workflows")
 GITHUB_MODES = ("legacy", "ocean")
-GITHUB_OCEAN_MARKER = "github-ocean"
+# Ocean-only workflows skipped in legacy mode (Sunset app). Mixed workflows may include github-ocean nodes.
+LEGACY_SKIP_WORKFLOW_FILES = frozenset({"provision-ec2-after-approval.json"})
 
 
 def load_config(config_path: Path) -> dict[str, str]:
@@ -84,17 +85,13 @@ def resolve_github_mode(config: dict[str, str], cli_mode: str | None) -> str:
     return config_mode if config_mode in GITHUB_MODES else "legacy"
 
 
-def is_github_ocean_workflow(file_path: Path) -> bool:
-    return GITHUB_OCEAN_MARKER in file_path.read_text(encoding="utf-8")
-
-
 def filter_workflow_files(files: list[Path], github_mode: str) -> list[Path]:
     if github_mode == "ocean":
         return files
 
     filtered: list[Path] = []
     for file_path in files:
-        if is_github_ocean_workflow(file_path):
+        if file_path.name in LEGACY_SKIP_WORKFLOW_FILES:
             identifier = file_path.stem
             try:
                 identifier = json.loads(file_path.read_text(encoding="utf-8")).get("identifier", identifier)
