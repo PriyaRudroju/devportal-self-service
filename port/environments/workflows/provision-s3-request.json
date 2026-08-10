@@ -60,7 +60,13 @@
           "identifier": "{{ .run.id }}",
           "title": "S3 {{ .outputs.trigger.bucket_name }}",
           "properties": {
-            "status": "ready"
+            "bucketName": "{{ .outputs.trigger.bucket_name }}",
+            "gitRef": "{{ .outputs.trigger.environment }}",
+            "environment": "dev",
+            "region": "{{AWS_REGION}}",
+            "status": "ready",
+            "requestedBy": "{{ .trigger.by.user.email }}",
+            "portRunId": "{{ .run.id }}"
           }
         }
       }
