@@ -106,11 +106,10 @@ Verify Port dispatches to the correct branch after changing default branch setti
 
 ## S3 provisioning branch ref
 
-S3 automation (`trigger_github_on_s3_ready`) passes the Git branch via `workflowInputs.ref` from the catalog entity property **`gitRef`** (set from the form **Environment** field).
+The S3 Port workflow (`provision_s3_request`) has three steps: form → catalog entity → **Trigger GitHub S3 Workflow**. The Git branch is passed via `workflowInputs.ref` from the form **Environment** field (`{{ .outputs.trigger.environment }}`), not from a separate automation.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Provision S3 Bucket runs on **`main`** | Empty `ref` in dispatch (Port defaults to repo default branch) | Re-apply Port config from **`dev`** after pushing automation changes |
+| Only two steps visible in Port run | Port config not re-applied after workflow update | Run **Deploy Port Config** on **`dev`**, then submit a new request |
+| Provision S3 Bucket runs on **`main`** | Empty `ref` in dispatch (Port defaults to repo default branch) | Confirm step 3 exists and **Environment** = `dev` on the form |
 | Old workflow inputs (`port_context`) in run logs | Dispatch used **`main`** branch workflow file | Confirm newest run shows branch **`dev`** and input **`port_run_id`** |
-
-The S3 workflow creates the entity with `status: ready` in one step and triggers on **`ENTITY_CREATED`**, so `gitRef` is always present in the automation event payload. Do not use a separate pending→ready update for dispatch — unchanged properties like `gitRef` are omitted from update diffs and produce an empty `ref`.
