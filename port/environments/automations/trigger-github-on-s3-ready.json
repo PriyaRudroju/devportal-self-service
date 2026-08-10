@@ -30,7 +30,7 @@
         "ref": "{{ .event.diff.after.properties.gitRef }}",
         "bucket_name": "{{ .event.diff.after.properties.bucketName }}",
         "environment": "{{ .event.diff.after.properties.environment }}",
-        "port_context": "{\"runId\":\"{{ .event.diff.after.properties.portRunId }}\"}"
+        "port_run_id": "{{ .event.diff.after.properties.portRunId }}"
       }
     }
   },
