@@ -106,11 +106,11 @@ Verify Port dispatches to the correct branch after changing default branch setti
 
 ## S3 provisioning branch ref
 
-The S3 Port workflow (`provision_s3_request`) has three steps: form → catalog entity → **Trigger GitHub S3 Workflow**. The Git branch is passed via `workflowInputs.ref` from the form **Environment** field (`{{ .outputs.trigger.environment }}`), not from a separate automation.
+In **legacy** mode (Sunset GitHub app), S3 uses a two-step Port workflow plus automation **`trigger_github_on_s3_ready`**. GitHub dispatch cannot live inside the workflow JSON because `github-ocean` is not installed. After the catalog entity is created, the automation passes `workflowInputs.ref` from entity **`gitRef`** (form **Environment** field).
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Only two steps visible in Port run | Port config not re-applied after workflow update | Run **Deploy Port Config** on **`dev`**, then submit a new request |
-| Provision S3 Bucket runs on **`main`** | Empty `ref` in dispatch (Port defaults to repo default branch) | Confirm step 3 exists and **Environment** = `dev` on the form |
+| Deploy Port Config 422 `github-ocean is not a valid integration` | Workflow node used Ocean integration in legacy mode | Use automation dispatch only (this repo on `dev`) |
+| Provision S3 Bucket runs on **`main`** | Empty `ref` in dispatch | Re-apply Port config; submit new request with **Environment** = `dev` |
 | Old workflow inputs (`port_context`) in run logs | Dispatch used **`main`** branch workflow file | Confirm newest run shows branch **`dev`** and input **`port_run_id`** |
-| `PATCH_RUN` 404 for `wfr_...` id | Port **workflow** runs use `wfr_` ids; `PATCH_RUN` only applies to **action** runs | S3 workflow uses catalog UPSERT only; Port updates workflow run status via `reportWorkflowStatus` on dispatch |
+| `PATCH_RUN` 404 for `wfr_...` id | Port **workflow** runs use `wfr_` ids; `PATCH_RUN` only applies to **action** runs | S3 workflow uses catalog UPSERT only; automation uses `reportWorkflowStatus` |

@@ -14,8 +14,9 @@ Self-service developer portal demos using Port.io, GitHub Actions, Terraform Clo
 ### S3 provisioning
 
 ```
-Port.io Self-Service Workflow (form → catalog entity → GitHub dispatch)
-  → GitHub Actions (workflow_dispatch on branch from Environment field)
+Port.io Self-Service Workflow (form → catalog entity)
+  → Port automation trigger_github_on_s3_ready (legacy GitHub app)
+  → GitHub Actions (workflow_dispatch on branch from gitRef)
     → Terraform Cloud (remote state + apply)
       → AWS S3 bucket
         → Port.io catalog updated (UPSERT on success)
@@ -270,11 +271,12 @@ Import [`port/environments/automations/trigger-github-on-ec2-approved.json`](por
 ## 5. Verify S3 flow
 
 1. Run **Provision S3 Bucket** from Port Self-service
-2. Confirm the Port run shows three steps: **S3 Request Form**, **Create Ready Catalog Entity**, **Trigger GitHub S3 Workflow**
-3. Check GitHub Actions workflow `Provision S3 Bucket` (branch should match form **Environment**, e.g. `dev`)
-4. Check TFC workspace `dev-portal-s3-dev`
-5. Confirm bucket in AWS S3 (`us-east-1`)
-6. Confirm Port catalog entity with `status: provisioned`
+2. Confirm the Port workflow run completes (**S3 Request Form** → **Create Ready Catalog Entity**)
+3. Confirm automation **Trigger GitHub When S3 Ready** runs (Port → Automations)
+4. Check GitHub Actions workflow `Provision S3 Bucket` (branch should match form **Environment**, e.g. `dev`)
+5. Check TFC workspace `dev-portal-s3-dev`
+6. Confirm bucket in AWS S3 (`us-east-1`)
+7. Confirm Port catalog entity with `status: provisioned`
 
 ---
 

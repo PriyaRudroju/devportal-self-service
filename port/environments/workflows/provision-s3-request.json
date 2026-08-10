@@ -2,7 +2,7 @@
   "identifier": "provision_s3_request",
   "title": "Provision S3 Bucket",
   "icon": "Bucket",
-  "description": "Request S3 bucket provisioning — form, catalog entity, then GitHub workflow dispatch (no Teams approval)",
+  "description": "Request S3 bucket provisioning — creates catalog entity; GitHub dispatch runs via automation (legacy Sunset app)",
   "category": "Infra",
   "nodes": [
     {
@@ -49,38 +49,12 @@
           }
         }
       }
-    },
-    {
-      "identifier": "dispatch_github",
-      "title": "Trigger GitHub S3 Workflow",
-      "config": {
-        "type": "INTEGRATION_ACTION",
-        "installationId": "{{GITHUB_INSTALLATION_ID}}",
-        "integrationProvider": "github-ocean",
-        "integrationInvocationType": "dispatch_workflow",
-        "integrationActionExecutionProperties": {
-          "org": "{{GITHUB_ORG}}",
-          "repo": "{{GITHUB_REPO}}",
-          "workflow": "provision-s3-bucket.yml",
-          "reportWorkflowStatus": true,
-          "workflowInputs": {
-            "ref": "{{ .outputs.trigger.environment }}",
-            "bucket_name": "{{ .outputs.trigger.bucket_name }}",
-            "environment": "dev",
-            "port_run_id": "{{ .run.id }}"
-          }
-        }
-      }
     }
   ],
   "connections": [
     {
       "sourceIdentifier": "trigger",
       "targetIdentifier": "create_ready_entity"
-    },
-    {
-      "sourceIdentifier": "create_ready_entity",
-      "targetIdentifier": "dispatch_github"
     }
   ]
 }

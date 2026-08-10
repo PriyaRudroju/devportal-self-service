@@ -1,0 +1,35 @@
+{
+  "identifier": "trigger_github_on_s3_ready",
+  "title": "Trigger GitHub When S3 Ready",
+  "description": "Legacy automation — dispatches S3 provisioning when a ready s3Bucket entity is created",
+  "trigger": {
+    "type": "automation",
+    "event": {
+      "type": "ENTITY_CREATED",
+      "blueprintIdentifier": "s3Bucket"
+    },
+    "condition": {
+      "type": "JQ",
+      "expressions": [".diff.after.properties.status == \"ready\""],
+      "combinator": "and"
+    }
+  },
+  "invocationMethod": {
+    "type": "INTEGRATION_ACTION",
+    "installationId": "{{GITHUB_INSTALLATION_ID}}",
+    "integrationActionType": "dispatch_workflow",
+    "integrationActionExecutionProperties": {
+      "org": "{{GITHUB_ORG}}",
+      "repo": "{{GITHUB_REPO}}",
+      "workflow": "provision-s3-bucket.yml",
+      "reportWorkflowStatus": true,
+      "workflowInputs": {
+        "ref": "{{ .event.diff.after.properties.gitRef }}",
+        "bucket_name": "{{ .event.diff.after.properties.bucketName }}",
+        "environment": "{{ .event.diff.after.properties.environment }}",
+        "port_run_id": "{{ .event.diff.after.identifier }}"
+      }
+    }
+  },
+  "publish": true
+}
