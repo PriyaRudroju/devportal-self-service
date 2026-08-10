@@ -1,4 +1,4 @@
-name: Provision S3 Bucket
+name: Provision S3 Bucket Test
 
 on:
   workflow_dispatch:
