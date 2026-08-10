@@ -94,9 +94,11 @@ Each branch should contain **only** these Port GitOps workflows (plus runtime wo
 
 ## Port GitHub automation branch ref
 
-Legacy EC2 automation (`trigger_github_on_ec2_approved`) includes a `ref` field matching the branch:
+S3 and EC2 automations pass `workflowInputs.ref` from the catalog entity **`gitRef`** property (set from the form **Git Branch** field). On stable `dev`, select **`dev`**. Feature branch names appear when `FEATURE_GIT_REFS` is set (see [`port/PROMOTION.md`](../port/PROMOTION.md)).
 
-| Branch | `ref` value |
+Legacy EC2 automation reads `gitRef` from the entity before approval status changes (unchanged fields are omitted from update diffs).
+
+| Branch | `GIT_REF_DEFAULT` in `config.env` |
 |---|---|
 | `dev` | `dev` |
 | `qa` | `qa` |
@@ -106,11 +108,12 @@ Verify Port dispatches to the correct branch after changing default branch setti
 
 ## S3 provisioning branch ref
 
-In **legacy** mode (Sunset GitHub app), S3 uses a two-step Port workflow plus automation **`trigger_github_on_s3_ready`**. GitHub dispatch cannot live inside the workflow JSON because `github-ocean` is not installed. After the catalog entity is created, the automation passes `workflowInputs.ref` from entity **`gitRef`** (form **Environment** field).
+In **legacy** mode (Sunset GitHub app), S3 uses a two-step Port workflow plus automation **`trigger_github_on_s3_ready`**. GitHub dispatch cannot live inside the workflow JSON because `github-ocean` is not installed. After the catalog entity is created, the automation passes `workflowInputs.ref` from entity **`gitRef`** (form **Git Branch** field).
 
 | Symptom | Cause | Fix |
 |---|---|---|
 | Deploy Port Config 422 `github-ocean is not a valid integration` | Workflow node used Ocean integration in legacy mode | Use automation dispatch only (this repo on `dev`) |
-| Provision S3 Bucket runs on **`main`** | Empty `ref` in dispatch | Re-apply Port config; submit new request with **Environment** = `dev` |
+| Provision S3 Bucket runs on **`main`** | Empty `ref` in dispatch | Re-apply Port config; submit new request with **Git Branch** = `dev` |
+| Feature branch not in dropdown | `FEATURE_GIT_REFS` empty | Push `port/**` on `feature/*` branch to trigger Deploy Port Config |
 | Old workflow inputs (`port_context`) in run logs | Dispatch used **`main`** branch workflow file | Confirm newest run shows branch **`dev`** and input **`port_run_id`** |
 | `PATCH_RUN` 404 for `wfr_...` id | Port **workflow** runs use `wfr_` ids; `PATCH_RUN` only applies to **action** runs | S3 workflow uses catalog UPSERT only; automation uses `reportWorkflowStatus` |

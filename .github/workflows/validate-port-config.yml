@@ -8,6 +8,7 @@ on:
       - "scripts/apply_port_config.py"
       - "scripts/load_env_config.sh"
       - ".github/workflows/validate-port-config.yml"
+      - ".github/workflows/deploy-port-config.yml"
 
 jobs:
   plan:

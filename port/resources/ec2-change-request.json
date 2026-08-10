@@ -20,6 +20,10 @@
         "type": "string",
         "title": "Environment"
       },
+      "gitRef": {
+        "type": "string",
+        "title": "Git Branch Ref"
+      },
       "region": {
         "type": "string",
         "title": "AWS Region",

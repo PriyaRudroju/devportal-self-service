@@ -23,6 +23,8 @@ ENV_OVERRIDE_KEYS = {
     "GITHUB_REPO",
     "AWS_REGION",
     "TFC_WORKSPACE",
+    "GIT_REF_DEFAULT",
+    "FEATURE_GIT_REFS",
 }
 
 ALL_RESOURCES = ("blueprints", "actions", "automations", "workflows")
@@ -44,6 +46,27 @@ def load_config(config_path: Path) -> dict[str, str]:
     return values
 
 
+def build_git_ref_enum(variables: dict[str, str]) -> str:
+    """Build JSON array for Port form git branch enum from config.env."""
+    default_ref = (
+        os.environ.get("GIT_REF_DEFAULT")
+        or variables.get("GIT_REF_DEFAULT")
+        or variables.get("GITHUB_WORKFLOW_REF")
+        or "dev"
+    ).strip()
+    feature_refs_raw = os.environ.get("FEATURE_GIT_REFS", variables.get("FEATURE_GIT_REFS", ""))
+    refs: list[str] = []
+    if default_ref:
+        refs.append(default_ref)
+    for part in feature_refs_raw.split(","):
+        ref = part.strip()
+        if ref and ref not in refs:
+            refs.append(ref)
+    if not refs:
+        refs.append("dev")
+    return json.dumps(refs)
+
+
 def build_variables(config_path: Path) -> dict[str, str]:
     """Load config.env first, then allow environment variable overrides."""
     variables = load_config(config_path)
@@ -51,6 +74,13 @@ def build_variables(config_path: Path) -> dict[str, str]:
         env_value = os.environ.get(key)
         if env_value:
             variables[key] = env_value
+    variables["GIT_REF_ENUM"] = build_git_ref_enum(variables)
+    if not variables.get("GIT_REF_DEFAULT"):
+        variables["GIT_REF_DEFAULT"] = (
+            os.environ.get("GIT_REF_DEFAULT")
+            or variables.get("GITHUB_WORKFLOW_REF")
+            or "dev"
+        )
     return variables
 
 

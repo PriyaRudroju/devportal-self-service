@@ -113,6 +113,8 @@ Example dev values:
 
 Variable precedence: `port/environments/config.env` first, then GitHub Environment variables override in CI.
 
+Port self-service forms use a **Git Branch** dropdown (`GIT_REF_DEFAULT` + `FEATURE_GIT_REFS` in `config.env`). Selecting `dev` runs GitHub on the stable dev branch; feature branch names are for testing Port/Git changes only — Terraform still targets dev infrastructure. See [`port/PROMOTION.md`](port/PROMOTION.md).
+
 ### Local validate and apply
 
 ```bash
@@ -273,7 +275,7 @@ Import [`port/environments/automations/trigger-github-on-ec2-approved.json`](por
 1. Run **Provision S3 Bucket** from Port Self-service
 2. Confirm the Port workflow run completes (**S3 Request Form** → **Create Ready Catalog Entity**)
 3. Confirm automation **Trigger GitHub When S3 Ready** runs (Port → Automations)
-4. Check GitHub Actions workflow `Provision S3 Bucket` (branch should match form **Environment**, e.g. `dev`)
+4. Check GitHub Actions workflow `Provision S3 Bucket` (branch should match form **Git Branch**, e.g. `dev`)
 5. Check TFC workspace `dev-portal-s3-dev`
 6. Confirm bucket in AWS S3 (`us-east-1`)
 7. Confirm Port catalog entity with `status: provisioned`
