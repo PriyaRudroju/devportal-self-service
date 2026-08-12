@@ -1,0 +1,46 @@
+name: Test S3 Port E2E
+
+on:
+  workflow_dispatch:
+    inputs:
+      git_ref:
+        description: Git branch for Port form git_ref and GitHub dispatch
+        required: true
+        default: feature/s3-git-ref-test
+        type: string
+      bucket_name:
+        description: S3 bucket name (leave empty for auto-generated)
+        required: false
+        type: string
+  push:
+    branches: [feature/s3-git-ref-test]
+    paths:
+      - ".github/workflows/test-s3-port-e2e.yml"
+      - "scripts/test_s3_port_e2e.py"
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    environment: development
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run S3 Port E2E test
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_API_URL: https://api.port.io
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ORG: PriyaRudroju
+          GITHUB_REPO: devportal-self-service
+          GIT_REF: ${{ github.event.inputs.git_ref || 'feature/s3-git-ref-test' }}
+          BUCKET_NAME: ${{ github.event.inputs.bucket_name }}
+        run: python scripts/test_s3_port_e2e.py
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "E2E test finished. Check step logs above for Port run URL and GitHub Actions run URL."
