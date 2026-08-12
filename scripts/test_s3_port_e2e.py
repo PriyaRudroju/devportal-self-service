@@ -202,6 +202,7 @@ def mark_entity_ready_external(token: str, entity_id: str) -> None:
     print(f"Entity before mark-ready: status={current} gitRef={git_ref}")
 
     api_gateway = os.environ.get("API_GATEWAY_URL", "").strip().rstrip("/")
+    used_lambda = False
     if api_gateway:
         url = f"{api_gateway}/s3/mark-ready"
         status, body = api_request(
@@ -210,10 +211,16 @@ def mark_entity_ready_external(token: str, entity_id: str) -> None:
             None,
             {"entityId": entity_id},
         )
-        if status not in {200, 201}:
-            raise RuntimeError(f"Lambda mark-ready failed: {status} {body}")
-        print(f"Lambda mark-ready: s3Bucket/{entity_id}")
-    else:
+        if status in {200, 201}:
+            used_lambda = True
+            print(f"Lambda mark-ready: s3Bucket/{entity_id}")
+        else:
+            print(
+                f"WARN: Lambda mark-ready failed ({status}) — falling back to Port API PATCH",
+                file=sys.stderr,
+            )
+
+    if not used_lambda:
         if current == "ready":
             patch_entity_status(token, entity_id, "pending")
             time.sleep(5)
