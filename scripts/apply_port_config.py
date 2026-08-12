@@ -141,6 +141,34 @@ def resolve_installation_id(variables: dict[str, str]) -> str:
     return os.environ.get("GITHUB_INSTALLATION_ID", "").strip()
 
 
+def prepare_integration_automation_payload(payload: dict, variables: dict[str, str]) -> dict:
+    """Hoist GitHub dispatch ref to top-level execution properties for legacy Sunset app."""
+    invocation = payload.get("invocationMethod")
+    if not isinstance(invocation, dict):
+        return payload
+    if invocation.get("type") != "INTEGRATION_ACTION":
+        return payload
+    if invocation.get("integrationActionType") != "dispatch_workflow":
+        return payload
+
+    props = dict(invocation.get("integrationActionExecutionProperties") or {})
+    workflow_inputs = dict(props.get("workflowInputs") or {})
+
+    ref = props.get("ref") or workflow_inputs.pop("ref", None)
+    if not isinstance(ref, str) or not ref.strip():
+        ref = (
+            variables.get("GITHUB_WORKFLOW_REF")
+            or variables.get("GIT_REF_DEFAULT")
+            or "dev"
+        )
+
+    props["ref"] = ref
+    props["workflowInputs"] = workflow_inputs
+    invocation["integrationActionExecutionProperties"] = props
+    payload["invocationMethod"] = invocation
+    return payload
+
+
 def prepare_action_payload(payload: dict, variables: dict[str, str]) -> dict:
     """Normalize GitHub backends for Port API (hosted GitHub rejects org/repo on type GITHUB)."""
     invocation = payload.get("invocationMethod")
@@ -149,7 +177,7 @@ def prepare_action_payload(payload: dict, variables: dict[str, str]) -> dict:
 
     inv_type = invocation.get("type")
     if inv_type == "INTEGRATION_ACTION":
-        return payload
+        return prepare_integration_automation_payload(payload, variables)
 
     if inv_type != "GITHUB":
         return payload
@@ -161,8 +189,10 @@ def prepare_action_payload(payload: dict, variables: dict[str, str]) -> dict:
     workflow = invocation.get("workflow")
     report_status = invocation.get("reportWorkflowStatus", True)
 
-    if ref and "ref" not in workflow_inputs:
-        workflow_inputs["ref"] = ref
+    if ref and "ref" in workflow_inputs:
+        workflow_inputs.pop("ref")
+    if not ref or (isinstance(ref, str) and not ref.strip()):
+        ref = variables.get("GITHUB_WORKFLOW_REF") or variables.get("GIT_REF_DEFAULT") or "dev"
 
     installation_id = resolve_installation_id(variables)
     if installation_id:
@@ -174,6 +204,7 @@ def prepare_action_payload(payload: dict, variables: dict[str, str]) -> dict:
                 "org": org,
                 "repo": repo,
                 "workflow": workflow,
+                "ref": ref,
                 "reportWorkflowStatus": report_status,
                 "workflowInputs": workflow_inputs,
             },

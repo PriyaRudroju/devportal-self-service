@@ -22,9 +22,9 @@
       "org": "{{GITHUB_ORG}}",
       "repo": "{{GITHUB_REPO}}",
       "workflow": "provision-s3-bucket.yml",
+      "ref": "{{ .event.diff.after.properties.gitRef }}",
       "reportWorkflowStatus": true,
       "workflowInputs": {
-        "ref": "{{ .event.diff.after.properties.gitRef }}",
         "bucket_name": "{{ .event.diff.after.properties.bucketName }}",
         "environment": "{{ .event.diff.after.properties.environment }}",
         "port_run_id": "{{ .event.diff.after.identifier }}"

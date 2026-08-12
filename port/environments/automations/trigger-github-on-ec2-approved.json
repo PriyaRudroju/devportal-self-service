@@ -25,9 +25,9 @@
       "org": "{{GITHUB_ORG}}",
       "repo": "{{GITHUB_REPO}}",
       "workflow": "change-ec2-instance.yml",
+      "ref": "{{ .event.diff.before.properties.gitRef }}",
       "reportWorkflowStatus": true,
       "workflowInputs": {
-        "ref": "{{ .event.diff.before.properties.gitRef }}",
         "instance_name": "{{ .event.diff.after.properties.instanceName }}",
         "instance_type": "{{ .event.diff.after.properties.instanceType }}",
         "environment": "{{ .event.diff.after.properties.environment }}",
