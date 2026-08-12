@@ -101,6 +101,16 @@ def wait_for_port_run(token: str, run_id: str, timeout_sec: int = 180) -> dict:
         run_result = run.get("result")
         print(f"Port run {run_id}: status={run_status} result={run_result}")
         if run_status in {"COMPLETED", "FAILED", "CANCELLED"}:
+            node_runs = run.get("nodeRuns") or body.get("nodeRuns") or []
+            if node_runs:
+                print("Port node runs:")
+                for node in node_runs:
+                    print(json.dumps({
+                        "identifier": node.get("identifier"),
+                        "status": node.get("status"),
+                        "result": node.get("result"),
+                        "error": node.get("error"),
+                    }, indent=2))
             return run
         time.sleep(5)
     raise RuntimeError(f"Timed out waiting for Port run {run_id}")

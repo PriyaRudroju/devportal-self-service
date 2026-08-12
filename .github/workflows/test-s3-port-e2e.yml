@@ -17,6 +17,7 @@ on:
     paths:
       - ".github/workflows/test-s3-port-e2e.yml"
       - "scripts/test_s3_port_e2e.py"
+      - "port/environments/workflows/provision-s3-request.json"
 
 jobs:
   e2e:
@@ -27,6 +28,20 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: Apply latest Port config
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_API_URL: https://api.port.io
+          API_GATEWAY_URL: ${{ vars.API_GATEWAY_URL }}
+          GITHUB_INSTALLATION_ID: ${{ vars.GITHUB_INSTALLATION_ID }}
+          TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
+          GITHUB_ORG: PriyaRudroju
+          GITHUB_REPO: devportal-self-service
+          AWS_REGION: us-east-2
+          FEATURE_GIT_REFS: feature/s3-git-ref-test
+        run: python scripts/apply_port_config.py --env dev --github-mode legacy
 
       - name: Run S3 Port E2E test
         env:

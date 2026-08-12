@@ -36,7 +36,7 @@
         "type": "UPSERT_ENTITY",
         "blueprintIdentifier": "s3Bucket",
         "mapping": {
-          "identifier": "{{ .run.id }}",
+          "identifier": "{{ .workflowRun.identifier }}",
           "title": "S3 {{ .outputs.trigger.bucket_name }}",
           "properties": {
             "bucketName": "{{ .outputs.trigger.bucket_name }}",
@@ -44,8 +44,8 @@
             "environment": "dev",
             "region": "{{AWS_REGION}}",
             "status": "ready",
-            "requestedBy": "{{ .trigger.by.user.email }}",
-            "portRunId": "{{ .run.id }}"
+            "requestedBy": "{{ .workflowRun.trigger.by.email }}",
+            "portRunId": "{{ .workflowRun.identifier }}"
           }
         }
       }
