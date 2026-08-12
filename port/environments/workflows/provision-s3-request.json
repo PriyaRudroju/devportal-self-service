@@ -52,11 +52,13 @@
     },
     {
       "identifier": "mark_ready_entity",
-      "title": "Mark Catalog Entity Ready",
+      "title": "Mark Catalog Entity Ready (Port API)",
       "config": {
-        "type": "UPSERT_ENTITY",
-        "blueprintIdentifier": "s3Bucket",
-        "mapping": {
+        "type": "WEBHOOK",
+        "url": "https://api.port.io/v1/blueprints/s3Bucket/entities",
+        "method": "POST",
+        "synchronized": true,
+        "body": {
           "identifier": "{{ .workflowRun.identifier }}",
           "title": "S3 {{ .outputs.trigger.bucket_name }}",
           "properties": {
