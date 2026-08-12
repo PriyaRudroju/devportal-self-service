@@ -116,16 +116,27 @@ def wait_for_port_run(token: str, run_id: str, timeout_sec: int = 180) -> dict:
     raise RuntimeError(f"Timed out waiting for Port run {run_id}")
 
 
-def list_github_runs(github_token: str, branch: str, created_after: str) -> list[dict]:
+def list_github_runs(
+    github_token: str,
+    branch: str | None = None,
+    *,
+    created_after: str | None = None,
+    event: str = "workflow_dispatch",
+) -> list[dict]:
+    query = [f"event={urllib.parse.quote(event, safe='')}", "per_page=10"]
+    if branch:
+        query.append(f"branch={urllib.parse.quote(branch, safe='')}")
     url = (
         f"{GITHUB_API}/repos/{GITHUB_ORG}/{GITHUB_REPO}/actions/workflows/"
-        f"{WORKFLOW_FILE}/runs?branch={urllib.parse.quote(branch, safe='')}"
-        f"&created=>{created_after}&per_page=5"
+        f"{WORKFLOW_FILE}/runs?{'&'.join(query)}"
     )
     status, body = api_request("GET", url, github_token, github=True)
     if status != 200 or not isinstance(body, dict):
         raise RuntimeError(f"GitHub runs query failed: {status} {body}")
-    return body.get("workflow_runs") or []
+    runs = body.get("workflow_runs") or []
+    if created_after:
+        runs = [run for run in runs if (run.get("created_at") or "") >= created_after]
+    return runs
 
 
 def fetch_entity(token: str, blueprint: str, identifier: str) -> dict:
@@ -155,10 +166,63 @@ def mark_entity_ready_external(token: str, entity_id: str) -> None:
     entity = fetch_entity(token, "s3Bucket", entity_id)
     props = entity.get("properties") or {}
     current = props.get("status")
+    git_ref = props.get("gitRef")
+    print(f"Entity before mark-ready: status={current} gitRef={git_ref}")
     if current == "ready":
         patch_entity_status(token, entity_id, "pending")
+        time.sleep(2)
     patch_entity_status(token, entity_id, "ready")
     print(f"External PATCH: s3Bucket/{entity_id} marked ready (was {current})")
+
+
+def find_dispatch_ref(obj: object) -> str | None:
+    if isinstance(obj, str) and "gitRef" in obj:
+        return obj
+    if isinstance(obj, dict):
+        for value in obj.values():
+            found = find_dispatch_ref(value)
+            if found:
+                return found
+    elif isinstance(obj, list):
+        for item in obj:
+            found = find_dispatch_ref(item)
+            if found:
+                return found
+    return None
+
+
+def wait_for_s3_automation_run(token: str, started_after: str, timeout_sec: int = 120) -> dict | None:
+    deadline = time.time() + timeout_sec
+    while time.time() < deadline:
+        status, body = api_request("GET", f"{PORT_API_URL}/v1/actions/runs?limit=20", token)
+        if status == 200 and isinstance(body, dict):
+            runs = body.get("runs") or body.get("actionRuns") or []
+            for run in runs:
+                action_id = (run.get("action") or {}).get("identifier") or run.get("actionIdentifier")
+                if action_id != "trigger_github_on_s3_ready":
+                    continue
+                created_at = run.get("createdAt") or run.get("created_at") or ""
+                if created_at and created_at < started_after:
+                    continue
+                run_id = run.get("id") or run.get("identifier")
+                detail: dict = {"id": run_id, "status": run.get("status"), "createdAt": created_at}
+                if run_id:
+                    detail_status, detail_body = api_request(
+                        "GET",
+                        f"{PORT_API_URL}/v1/actions/runs/{run_id}",
+                        token,
+                    )
+                    if detail_status == 200 and isinstance(detail_body, dict):
+                        action_run = detail_body.get("actionRun") or detail_body.get("run") or detail_body
+                        invocation = action_run.get("invocation") or {}
+                        props = invocation.get("integrationActionExecutionProperties") or {}
+                        detail["dispatch_ref"] = props.get("ref") or find_dispatch_ref(invocation)
+                        detail["workflowInputs"] = props.get("workflowInputs")
+                        detail["statusLabel"] = action_run.get("statusLabel") or run.get("statusLabel")
+                print(f"Port automation run detected: {json.dumps(detail, indent=2)}")
+                return detail
+        time.sleep(5)
+    return None
 
 
 def print_diagnostics(token: str, port_run_id: str) -> None:
@@ -214,12 +278,27 @@ def print_diagnostics(token: str, port_run_id: str) -> None:
                         action_run = detail_body.get("actionRun") or detail_body.get("run") or detail_body
                         invocation = action_run.get("invocation") or {}
                         props = invocation.get("integrationActionExecutionProperties") or {}
-                        summary["dispatch_ref"] = props.get("ref")
+                        summary["dispatch_ref"] = props.get("ref") or find_dispatch_ref(invocation)
                         summary["workflow"] = props.get("workflow")
                         summary["workflowInputs"] = props.get("workflowInputs")
+                        summary["statusLabel"] = action_run.get("statusLabel") or run.get("statusLabel")
                 print(json.dumps(summary, indent=2))
             return
     print("No recent automation runs matched trigger_github_on_s3_ready in last 10 action runs")
+
+    recent = list_github_runs(os.environ.get("GITHUB_TOKEN", ""), event="workflow_dispatch") if os.environ.get("GITHUB_TOKEN") else []
+    if recent:
+        print("Recent provision-s3-bucket workflow_dispatch runs (all branches):")
+        for run in recent[:5]:
+            print(json.dumps({
+                "id": run.get("id"),
+                "branch": run.get("head_branch"),
+                "status": run.get("status"),
+                "conclusion": run.get("conclusion"),
+                "created_at": run.get("created_at"),
+                "url": run.get("html_url"),
+            }, indent=2))
+
 
 def wait_for_github_run(
     github_token: str,
@@ -229,7 +308,7 @@ def wait_for_github_run(
 ) -> dict:
     deadline = time.time() + timeout_sec
     while time.time() < deadline:
-        runs = list_github_runs(github_token, branch, created_after)
+        runs = list_github_runs(github_token, branch, created_after=created_after)
         if runs:
             run = runs[0]
             print(
@@ -238,11 +317,21 @@ def wait_for_github_run(
                 f"status={run.get('status')} conclusion={run.get('conclusion')} "
                 f"url={run.get('html_url')}"
             )
-            if run.get("status") == "completed":
+            if run.get("head_branch") == branch:
                 return run
         else:
             print(f"No GitHub runs yet on branch {branch}...")
         time.sleep(10)
+
+    other_branches = list_github_runs(github_token, created_after=created_after)
+    wrong_branch = [r for r in other_branches if r.get("head_branch") != branch]
+    if wrong_branch:
+        run = wrong_branch[0]
+        raise RuntimeError(
+            f"GitHub ran on {run.get('head_branch')} instead of {branch} — "
+            "automation ref was likely empty (defaults to main). "
+            f"Run: {run.get('html_url')}"
+        )
     raise RuntimeError(f"No GitHub workflow run appeared on branch {branch} within {timeout_sec}s")
 
 
@@ -281,17 +370,17 @@ def main() -> int:
             n for n in node_runs
             if n.get("result") not in {None, "SUCCESS"} or n.get("status") in {"FAILED", "CANCELLED"}
         ]
-        entity_pending = False
+        entity_exists = False
         try:
             entity = fetch_entity(port_token, "s3Bucket", port_run_id)
-            entity_pending = (entity.get("properties") or {}).get("status") == "pending"
+            entity_exists = True
         except Exception:
-            entity_pending = False
+            entity_exists = False
 
-        if entity_pending:
+        if entity_exists:
             print(
-                "WARN: Port workflow did not succeed but entity is pending — "
-                "marking ready via external Port API (Lambda may not be deployed yet)",
+                "WARN: Port workflow did not succeed — marking ready via external Port API "
+                "(Lambda /s3/mark-ready may not be deployed yet)",
                 file=sys.stderr,
             )
             mark_entity_ready_external(port_token, port_run_id)
@@ -313,17 +402,18 @@ def main() -> int:
                 )
             return 1
         else:
-            print("FAIL: Port workflow did not succeed", file=sys.stderr)
+            print("FAIL: Port workflow did not succeed and entity was not created", file=sys.stderr)
             return 1
+    else:
+        # Workflow mark-ready (Lambda) may not emit ENTITY_UPDATED; always retrigger externally.
+        print("Port workflow succeeded — ensuring automation via external Port API PATCH")
+        mark_entity_ready_external(port_token, port_run_id)
 
     print_diagnostics(port_token, port_run_id)
 
-    # If mark-ready ran inside the workflow (direct Port API), automation may not fire.
-    # Retrigger via external PATCH when no GitHub run appears quickly.
-    quick_runs = list_github_runs(github_token, git_ref, started_at)
-    if not quick_runs:
-        print("No immediate GitHub run — retriggering automation via external Port API PATCH")
-        mark_entity_ready_external(port_token, port_run_id)
+    automation_run = wait_for_s3_automation_run(port_token, started_at, timeout_sec=90)
+    if not automation_run:
+        print("WARN: No Port automation run detected within 90s — continuing to poll GitHub", file=sys.stderr)
 
     try:
         github_run = wait_for_github_run(github_token, git_ref, started_at)
@@ -348,7 +438,7 @@ def main() -> int:
         print(f"FAIL: GitHub ran on {github_run.get('head_branch')}, expected {git_ref}", file=sys.stderr)
         return 1
 
-    if github_run.get("conclusion") not in {"success", None} and github_run.get("status") == "completed":
+    if github_run.get("status") == "completed" and github_run.get("conclusion") not in {"success", None}:
         print("WARN: GitHub workflow completed but Terraform may have failed — dispatch path succeeded")
 
     print("\nPASS: Port workflow succeeded and GitHub Provision S3 Bucket run started on correct branch")
