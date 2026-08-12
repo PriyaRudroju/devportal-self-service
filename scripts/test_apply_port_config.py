@@ -64,7 +64,7 @@ class TestS3AutomationPayload(unittest.TestCase):
         inputs = result["invocationMethod"]["integrationActionExecutionProperties"]["workflowInputs"]
         self.assertIn("diff.before.properties.bucketName", inputs["bucket_name"])
         self.assertIn("diff.before.properties.environment", inputs["environment"])
-        self.assertIn("diff.before.properties.portRunId", inputs["port_run_id"])
+        self.assertIn("context.entityIdentifier", inputs["port_run_id"])
 
 
 class TestGitRefEnum(unittest.TestCase):

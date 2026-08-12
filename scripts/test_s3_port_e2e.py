@@ -218,12 +218,17 @@ def mark_entity_ready_external(token: str, entity_id: str) -> None:
         "bucketName": props.get("bucketName"), "environment": props.get("environment"),
     })
     # #endregion
-    if current == "ready":
+    if current != "pending":
         patch_entity_status(token, entity_id, "pending")
         time.sleep(2)
     patch_entity_status(token, entity_id, "ready")
     after = fetch_entity(token, "s3Bucket", entity_id)
     after_props = after.get("properties") or {}
+    if not after_props.get("gitRef"):
+        raise RuntimeError(
+            f"Entity {entity_id} has empty gitRef after mark-ready — "
+            "automation will dispatch to wrong branch"
+        )
     print(f"External PATCH: s3Bucket/{entity_id} marked ready (was {current})")
     # #region agent log
     debug_log("H4", "mark_entity_ready_external:after", "entity state after mark-ready", {

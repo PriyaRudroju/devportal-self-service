@@ -63,6 +63,8 @@ jobs:
           echo "::warning::Live Port automation ref could not be verified via GET API — apply step succeeded; E2E will validate dispatch."
 
       - name: Verify GitHub workflow accepts dispatch on feature branch
+        continue-on-error: true
+        id: github_dispatch_sanity
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GIT_REF: ${{ github.event.inputs.git_ref || 'feature/s3-git-ref-test' }}
@@ -96,6 +98,11 @@ jobs:
           with urllib.request.urlopen(req, timeout=60) as resp:
               print(f"GitHub dispatch accepted: HTTP {resp.status} ref={ref}")
           PY
+
+      - name: Warn if GitHub dispatch sanity check failed
+        if: steps.github_dispatch_sanity.outcome != 'success'
+        run: |
+          echo "::warning::Direct GitHub workflow_dispatch to feature branch failed — Port dispatch may also fail until main/default branch workflow accepts port_run_id"
 
       - name: Run S3 Port E2E test
         env:

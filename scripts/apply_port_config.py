@@ -30,7 +30,10 @@ ENV_OVERRIDE_KEYS = {
 ALL_RESOURCES = ("blueprints", "actions", "automations", "workflows")
 GITHUB_MODES = ("legacy", "ocean")
 # Ocean-only workflows skipped in legacy mode (Sunset app). Mixed workflows may include github-ocean nodes.
-LEGACY_SKIP_WORKFLOW_FILES = frozenset({"provision-ec2-after-approval.json"})
+LEGACY_SKIP_WORKFLOW_FILES = frozenset({
+    "provision-ec2-after-approval.json",
+    "provision-s3-after-ready.json",
+})
 
 
 def load_config(config_path: Path) -> dict[str, str]:
