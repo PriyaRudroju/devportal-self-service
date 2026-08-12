@@ -99,6 +99,9 @@ jobs:
               print(f"GitHub dispatch accepted: HTTP {resp.status} ref={ref}")
           PY
 
+      - name: Record E2E start timestamp
+        run: echo "E2E_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
       - name: Warn if GitHub dispatch sanity check failed
         if: steps.github_dispatch_sanity.outcome != 'success'
         run: |
@@ -114,17 +117,8 @@ jobs:
           GITHUB_REPO: devportal-self-service
           GIT_REF: ${{ github.event.inputs.git_ref || 'feature/s3-git-ref-test' }}
           BUCKET_NAME: ${{ github.event.inputs.bucket_name }}
+          E2E_STARTED_AT: ${{ env.E2E_STARTED_AT }}
         run: python scripts/test_s3_port_e2e.py
-
-      - name: Print debug log on failure
-        if: failure()
-        run: |
-          if [ -f debug-985163.log ]; then
-            echo "=== debug-985163.log ==="
-            cat debug-985163.log
-          else
-            echo "No debug log file found"
-          fi
 
       - name: Summary
         if: always()

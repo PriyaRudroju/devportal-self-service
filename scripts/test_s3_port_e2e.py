@@ -23,28 +23,7 @@ GITHUB_REPO = os.environ.get("GITHUB_REPO", "devportal-self-service")
 WORKFLOW_FILE = "provision-s3-bucket.yml"
 S3_AUTOMATION_ID = "trigger_github_on_s3_ready"
 S3_DISPATCH_WORKFLOW_ID = "provision_s3_after_ready"
-DEBUG_LOG_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "debug-985163.log",
-)
-
-
-# #region agent log
-def debug_log(hypothesis_id: str, location: str, message: str, data: dict | None = None) -> None:
-    payload = {
-        "sessionId": "985163",
-        "hypothesisId": hypothesis_id,
-        "location": location,
-        "message": message,
-        "data": data or {},
-        "timestamp": int(time.time() * 1000),
-    }
-    try:
-        with open(DEBUG_LOG_PATH, "a", encoding="utf-8") as fh:
-            fh.write(json.dumps(payload) + "\n")
-    except OSError:
-        pass
-# #endregion
+PORT_DISPATCH_ACTOR = "getport-io[bot]"
 
 
 def fetch_live_s3_automation(token: str) -> dict:
@@ -169,6 +148,7 @@ def list_github_runs(
     *,
     created_after: str | None = None,
     event: str = "workflow_dispatch",
+    actor_login: str | None = None,
 ) -> list[dict]:
     query = [f"event={urllib.parse.quote(event, safe='')}", "per_page=10"]
     if branch:
@@ -182,7 +162,12 @@ def list_github_runs(
         raise RuntimeError(f"GitHub runs query failed: {status} {body}")
     runs = body.get("workflow_runs") or []
     if created_after:
-        runs = [run for run in runs if (run.get("created_at") or "") >= created_after]
+        runs = [run for run in runs if (run.get("created_at") or "") > created_after]
+    if actor_login:
+        runs = [
+            run for run in runs
+            if (run.get("actor") or {}).get("login") == actor_login
+        ]
     return runs
 
 
@@ -215,13 +200,6 @@ def mark_entity_ready_external(token: str, entity_id: str) -> None:
     current = props.get("status")
     git_ref = props.get("gitRef")
     print(f"Entity before mark-ready: status={current} gitRef={git_ref}")
-    # #region agent log
-    debug_log("H1", "mark_entity_ready_external:before", "entity state before mark-ready", {
-        "entity_id": entity_id, "status": current, "gitRef": git_ref,
-        "portRunId": props.get("portRunId"),
-        "bucketName": props.get("bucketName"), "environment": props.get("environment"),
-    })
-    # #endregion
     if current != "pending":
         patch_entity_status(token, entity_id, "pending")
         time.sleep(2)
@@ -234,12 +212,6 @@ def mark_entity_ready_external(token: str, entity_id: str) -> None:
             "automation will dispatch to wrong branch"
         )
     print(f"External PATCH: s3Bucket/{entity_id} marked ready (was {current})")
-    # #region agent log
-    debug_log("H4", "mark_entity_ready_external:after", "entity state after mark-ready", {
-        "entity_id": entity_id, "status": after_props.get("status"), "gitRef": after_props.get("gitRef"),
-        "portRunId": after_props.get("portRunId"),
-    })
-    # #endregion
 
 
 def find_dispatch_ref(obj: object) -> str | None:
@@ -337,7 +309,6 @@ def wait_for_s3_dispatch(token: str, started_after: str, timeout_sec: int = 120)
         automation_run = poll_s3_automation_run(token, started_after)
         if automation_run:
             print(f"Port automation run detected: {json.dumps(automation_run, indent=2)}")
-            debug_log("H2", "wait_for_s3_dispatch", "automation run found", automation_run)
             status_label = (automation_run.get("statusLabel") or "").upper()
             if status_label in {"FAILURE", "FAILED"}:
                 raise RuntimeError(
@@ -347,7 +318,6 @@ def wait_for_s3_dispatch(token: str, started_after: str, timeout_sec: int = 120)
         workflow_run = poll_s3_port_workflow_run(token, started_after)
         if workflow_run:
             print(f"Port workflow run detected: {json.dumps(workflow_run, indent=2)}")
-            debug_log("H2", "wait_for_s3_dispatch", "workflow run found", workflow_run)
             dispatch_node = workflow_run.get("dispatch_node") or {}
             if dispatch_node.get("result") not in {None, "SUCCESS"} or dispatch_node.get("status") in {
                 "FAILED",
@@ -359,9 +329,6 @@ def wait_for_s3_dispatch(token: str, started_after: str, timeout_sec: int = 120)
                 )
             return workflow_run
         time.sleep(5)
-    debug_log("H2", "wait_for_s3_dispatch", "no automation or workflow dispatch within timeout", {
-        "started_after": started_after,
-    })
     return None
 
 
@@ -394,14 +361,8 @@ def wait_for_s3_automation_run(token: str, started_after: str, timeout_sec: int 
                         detail["workflowInputs"] = props.get("workflowInputs")
                         detail["statusLabel"] = action_run.get("statusLabel") or run.get("statusLabel")
                 print(f"Port automation run detected: {json.dumps(detail, indent=2)}")
-                # #region agent log
-                debug_log("H2", "wait_for_s3_automation_run", "automation run found", detail)
-                # #endregion
                 return detail
         time.sleep(5)
-    # #region agent log
-    debug_log("H2", "wait_for_s3_automation_run", "no automation run within timeout", {"started_after": started_after})
-    # #endregion
     return None
 
 
@@ -488,31 +449,32 @@ def wait_for_github_run(
 ) -> dict:
     deadline = time.time() + timeout_sec
     while time.time() < deadline:
-        runs = list_github_runs(github_token, branch, created_after=created_after)
+        runs = list_github_runs(
+            github_token,
+            branch,
+            created_after=created_after,
+            actor_login=PORT_DISPATCH_ACTOR,
+        )
         if runs:
             run = runs[0]
             print(
                 "GitHub run found: "
                 f"id={run.get('id')} branch={run.get('head_branch')} "
+                f"actor={(run.get('actor') or {}).get('login')} "
                 f"status={run.get('status')} conclusion={run.get('conclusion')} "
                 f"url={run.get('html_url')}"
             )
             if run.get("head_branch") == branch:
                 return run
         else:
-            print(f"No GitHub runs yet on branch {branch}...")
+            print(f"No {PORT_DISPATCH_ACTOR} GitHub runs yet on branch {branch}...")
         time.sleep(10)
 
-    other_branches = list_github_runs(github_token, created_after=created_after)
-    # #region agent log
-    debug_log("H5", "wait_for_github_run:timeout", "github poll exhausted", {
-        "expected_branch": branch,
-        "recent_runs": [
-            {"id": r.get("id"), "branch": r.get("head_branch"), "status": r.get("status"), "created_at": r.get("created_at")}
-            for r in other_branches[:5]
-        ],
-    })
-    # #endregion
+    other_branches = list_github_runs(
+        github_token,
+        created_after=created_after,
+        actor_login=PORT_DISPATCH_ACTOR,
+    )
     wrong_branch = [r for r in other_branches if r.get("head_branch") != branch]
     if wrong_branch:
         run = wrong_branch[0]
@@ -521,7 +483,9 @@ def wait_for_github_run(
             "automation ref was likely empty (defaults to main). "
             f"Run: {run.get('html_url')}"
         )
-    raise RuntimeError(f"No GitHub workflow run appeared on branch {branch} within {timeout_sec}s")
+    raise RuntimeError(
+        f"No {PORT_DISPATCH_ACTOR} workflow run appeared on branch {branch} within {timeout_sec}s"
+    )
 
 
 def main() -> int:
@@ -532,7 +496,10 @@ def main() -> int:
     if not github_token:
         raise RuntimeError("GITHUB_TOKEN is required")
 
-    started_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    started_at = (
+        os.environ.get("E2E_STARTED_AT", "").strip()
+        or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    )
     print("=== S3 Port E2E test ===")
     print(f"bucket_name={bucket_name}")
     print(f"git_ref={git_ref}")
@@ -541,9 +508,6 @@ def main() -> int:
     port_token = get_port_token()
     live_automation = fetch_live_s3_automation(port_token)
     print(f"Live Port automation: {json.dumps(live_automation, indent=2)}")
-    # #region agent log
-    debug_log("H3", "main:live_automation", "live automation config from Port API", live_automation)
-    # #endregion
 
     port_run_id = trigger_port_workflow(port_token, bucket_name, git_ref)
     port_run = wait_for_port_run(port_token, port_run_id)
@@ -608,10 +572,10 @@ def main() -> int:
 
     automation_run = wait_for_s3_dispatch(port_token, started_at, timeout_sec=90)
     if not automation_run:
-        print(
-            f"WARN: No Port dispatch run detected for {S3_AUTOMATION_ID} or "
-            f"{S3_DISPATCH_WORKFLOW_ID} within 90s — continuing to poll GitHub",
-            file=sys.stderr,
+        print_diagnostics(port_token, port_run_id)
+        raise RuntimeError(
+            f"No Port dispatch run detected for {S3_AUTOMATION_ID} or "
+            f"{S3_DISPATCH_WORKFLOW_ID} within 90s"
         )
 
     try:
