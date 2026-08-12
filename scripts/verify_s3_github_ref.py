@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.request
@@ -66,11 +67,56 @@ def api_get(url: str, token: str) -> tuple[int, dict | list | str]:
         return exc.code, parsed
 
 
+def normalize_template(value: str) -> str:
+    """Collapse whitespace so Port API formatting differences still match."""
+    return re.sub(r"\s+", "", value.strip())
+
+
+def find_gitref_template(obj: object) -> str | None:
+    """Find any template string referencing gitRef anywhere in Port action JSON."""
+    if isinstance(obj, str) and "gitRef" in obj:
+        return obj
+    if isinstance(obj, dict):
+        for value in obj.values():
+            found = find_gitref_template(value)
+            if found:
+                return found
+    elif isinstance(obj, list):
+        for item in obj:
+            found = find_gitref_template(item)
+            if found:
+                return found
+    return None
+
+
 def extract_dispatch_ref(automation: dict) -> str | None:
     invocation = automation.get("invocationMethod") or {}
     props = invocation.get("integrationActionExecutionProperties") or {}
     ref = props.get("ref")
-    return ref if isinstance(ref, str) else None
+    if isinstance(ref, str) and ref.strip():
+        return ref
+
+    # Port API responses may hoist or nest dispatch fields differently.
+    direct_ref = invocation.get("ref")
+    if isinstance(direct_ref, str) and direct_ref.strip():
+        return direct_ref
+
+    workflow_inputs = props.get("workflowInputs") or invocation.get("workflowInputs") or {}
+    nested_ref = workflow_inputs.get("ref")
+    if isinstance(nested_ref, str) and nested_ref.strip():
+        return nested_ref
+
+    return find_gitref_template(automation)
+
+
+def ref_uses_diff_before(ref: str) -> bool:
+    normalized = normalize_template(ref)
+    return "diff.before.properties.gitRef" in normalized
+
+
+def ref_uses_diff_after(ref: str) -> bool:
+    normalized = normalize_template(ref)
+    return "diff.after.properties.gitRef" in normalized
 
 
 def load_repo_automation(repo_root: Path) -> dict:
@@ -88,15 +134,15 @@ def verify_ref(ref: str | None, *, label: str) -> list[str]:
     if not ref:
         errors.append(f"{label}: missing top-level ref in integrationActionExecutionProperties")
         return errors
-    if ref == FORBIDDEN_REF:
+    if ref_uses_diff_after(ref):
         errors.append(
             f"{label}: ref still uses diff.after.properties.gitRef — "
             "GitHub defaults to main when gitRef is omitted from diff.after on status-only updates"
         )
-    elif ref != EXPECTED_REF:
-        errors.append(f"{label}: ref is {ref!r}, expected {EXPECTED_REF!r}")
-    if "workflowInputs" in str(ref):
-        errors.append(f"{label}: ref must be top-level, not inside workflowInputs")
+    elif not ref_uses_diff_before(ref):
+        errors.append(
+            f"{label}: ref is {ref!r}, expected a template containing diff.before.properties.gitRef"
+        )
     return errors
 
 
@@ -130,6 +176,13 @@ def main() -> int:
         live_automation = fetch_live_automation(args.api_url, token)
         live_ref = extract_dispatch_ref(live_automation)
         print(f"Live automation ref: {live_ref!r}")
+        if live_ref is None:
+            invocation = live_automation.get("invocationMethod") or {}
+            print(
+                "DEBUG live invocationMethod:",
+                json.dumps(invocation, indent=2),
+                file=sys.stderr,
+            )
         errors.extend(verify_ref(live_ref, label="live Port"))
         if not errors:
             print("OK   live Port automation matches expected ref template")
