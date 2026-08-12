@@ -155,6 +155,7 @@ def prepare_integration_automation_payload(payload: dict, variables: dict[str, s
     workflow_inputs = dict(props.get("workflowInputs") or {})
 
     ref = props.get("ref") or workflow_inputs.pop("ref", None)
+    workflow_inputs.pop("ref", None)
     if not isinstance(ref, str) or not ref.strip():
         ref = (
             variables.get("GITHUB_WORKFLOW_REF")
@@ -163,8 +164,6 @@ def prepare_integration_automation_payload(payload: dict, variables: dict[str, s
         )
 
     props["ref"] = ref
-    if ref and "ref" not in workflow_inputs:
-        workflow_inputs["ref"] = ref
     props["workflowInputs"] = workflow_inputs
     invocation["integrationActionExecutionProperties"] = props
     payload["invocationMethod"] = invocation

@@ -94,7 +94,7 @@ Each branch should contain **only** these Port GitOps workflows (plus runtime wo
 
 ## Port GitHub automation branch ref
 
-S3 and EC2 automations pass **`ref`** as a top-level field in `integrationActionExecutionProperties` from entity **`gitRef`** (form **Git Branch**). Do not put `ref` only inside `workflowInputs` — the legacy Sunset app ignores it and GitHub defaults to **`main`**.
+S3 and EC2 automations pass **`ref`** as a **top-level dispatch branch parameter** in `integrationActionExecutionProperties` from entity **`gitRef`** (form **Git Branch**). **`ref` is not a GitHub workflow input** — do not include it in `workflowInputs`. If `ref` is missing at the top level, GitHub defaults to **`main`**.
 
 Legacy EC2 automation reads `gitRef` from the entity before approval status changes (unchanged fields are omitted from update diffs).
 
@@ -108,12 +108,13 @@ Verify Port dispatches to the correct branch after changing default branch setti
 
 ## S3 provisioning branch ref
 
-S3 and EC2 automations pass **`ref`** as a **top-level** field in `integrationActionExecutionProperties` (not inside `workflowInputs`) from catalog entity **`gitRef`**. The legacy Sunset GitHub app requires this for branch dispatch; an empty or missing `ref` defaults to the repo default branch (**`main`**).
+S3 and EC2 automations pass **`ref`** as a **top-level** field in `integrationActionExecutionProperties` from entity **`gitRef`**. **`ref` is the Git branch for dispatch, not a GitHub workflow input** — do not include it in `workflowInputs` for [`provision-s3-bucket.yml`](../../.github/workflows/provision-s3-bucket.yml) (which only declares `bucket_name`, `environment`, `port_run_id`). Extra inputs cause GitHub to reject the dispatch.
 
 | Symptom | Cause | Fix |
 |---|---|---|
 | Deploy Port Config 422 `github-ocean is not a valid integration` | Workflow node used Ocean integration in legacy mode | Use automation dispatch only (this repo on `dev`) |
-| Provision S3 Bucket runs on **`main`** | `ref` missing, inside `workflowInputs` only, or empty at dispatch | Re-apply Port config; confirm automation JSON has top-level `ref`; entity `gitRef` set |
+| Provision S3 Bucket never starts / automation Failed | `ref` sent inside `workflowInputs` (undeclared GitHub input) | Keep `ref` top-level only; re-apply Port config |
+| Provision S3 Bucket runs on **`main`** | `ref` missing or empty at dispatch | Re-apply Port config; confirm top-level `ref`; entity `gitRef` set |
 | Feature branch not in dropdown | `FEATURE_GIT_REFS` empty | Push `port/**` on `feature/*` branch to trigger Deploy Port Config |
 | Old workflow inputs (`port_context`) in run logs | Dispatch used **`main`** branch workflow file | Confirm newest run shows correct branch and input **`port_run_id`** |
 | `PATCH_RUN` 404 for `wfr_...` id | Port **workflow** runs use `wfr_` ids; `PATCH_RUN` only applies to **action** runs | S3 workflow uses catalog UPSERT only; automation uses `reportWorkflowStatus` |
