@@ -1,16 +1,19 @@
 {
   "identifier": "trigger_github_on_s3_ready",
   "title": "Trigger GitHub When S3 Ready",
-  "description": "Legacy automation — dispatches S3 provisioning when a ready s3Bucket entity is created",
+  "description": "Legacy automation — dispatches S3 provisioning when a s3Bucket entity becomes ready",
   "trigger": {
     "type": "automation",
     "event": {
-      "type": "ENTITY_CREATED",
+      "type": "ENTITY_UPDATED",
       "blueprintIdentifier": "s3Bucket"
     },
     "condition": {
       "type": "JQ",
-      "expressions": [".diff.after.properties.status == \"ready\""],
+      "expressions": [
+        ".diff.before.properties.status == \"pending\"",
+        ".diff.after.properties.status == \"ready\""
+      ],
       "combinator": "and"
     }
   },

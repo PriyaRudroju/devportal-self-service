@@ -139,15 +139,6 @@ def fetch_entity(token: str, blueprint: str, identifier: str) -> dict:
     return body.get("entity") or body
 
 
-def fetch_recent_automation_runs(token: str, action_id: str, limit: int = 5) -> list[dict]:
-    url = f"{PORT_API_URL}/v1/actions/runs?actionIdentifier={urllib.parse.quote(action_id, safe='')}&limit={limit}"
-    status, body = api_request("GET", url, token)
-    if status != 200 or not isinstance(body, dict):
-        print(f"WARN: could not fetch automation runs: {status} {body}")
-        return []
-    return body.get("runs") or body.get("actionRuns") or []
-
-
 def print_diagnostics(token: str, port_run_id: str) -> None:
     print("\n--- Diagnostics ---")
     try:
@@ -165,27 +156,33 @@ def print_diagnostics(token: str, port_run_id: str) -> None:
                 indent=2,
             )
         )
+        if props.get("status") != "ready":
+            print(
+                "WARN: entity status is not ready — automation expects pending → ready update",
+                file=sys.stderr,
+            )
     except Exception as exc:
         print(f"Entity lookup failed: {exc}")
 
-    runs = fetch_recent_automation_runs(token, "trigger_github_on_s3_ready")
-    if not runs:
-        print("No recent automation runs found for trigger_github_on_s3_ready")
-        return
-    print("Recent automation runs:")
-    for run in runs[:3]:
-        print(
-            json.dumps(
-                {
+    status, body = api_request("GET", f"{PORT_API_URL}/v1/actions/runs?limit=10", token)
+    if status == 200 and isinstance(body, dict):
+        runs = body.get("runs") or body.get("actionRuns") or []
+        s3_runs = [
+            run for run in runs
+            if (run.get("action") or {}).get("identifier") == "trigger_github_on_s3_ready"
+            or run.get("actionIdentifier") == "trigger_github_on_s3_ready"
+        ]
+        if s3_runs:
+            print("Recent S3 automation runs:")
+            for run in s3_runs[:3]:
+                print(json.dumps({
                     "id": run.get("id") or run.get("identifier"),
                     "status": run.get("status"),
                     "statusLabel": run.get("statusLabel"),
                     "createdAt": run.get("createdAt"),
-                    "link": run.get("link"),
-                },
-                indent=2,
-            )
-        )
+                }, indent=2))
+            return
+    print("No recent automation runs matched trigger_github_on_s3_ready in last 10 action runs")
 
 def wait_for_github_run(
     github_token: str,

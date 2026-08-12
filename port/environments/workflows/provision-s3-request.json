@@ -30,8 +30,29 @@
       }
     },
     {
-      "identifier": "create_ready_entity",
-      "title": "Create Ready Catalog Entity",
+      "identifier": "create_pending_entity",
+      "title": "Create Pending Catalog Entity",
+      "config": {
+        "type": "UPSERT_ENTITY",
+        "blueprintIdentifier": "s3Bucket",
+        "mapping": {
+          "identifier": "{{ .workflowRun.identifier }}",
+          "title": "S3 {{ .outputs.trigger.bucket_name }}",
+          "properties": {
+            "bucketName": "{{ .outputs.trigger.bucket_name }}",
+            "gitRef": "{{ .outputs.trigger.git_ref }}",
+            "environment": "dev",
+            "region": "{{AWS_REGION}}",
+            "status": "pending",
+            "requestedBy": "{{ .workflowRun.trigger.by.email }}",
+            "portRunId": "{{ .workflowRun.identifier }}"
+          }
+        }
+      }
+    },
+    {
+      "identifier": "mark_ready_entity",
+      "title": "Mark Catalog Entity Ready",
       "config": {
         "type": "UPSERT_ENTITY",
         "blueprintIdentifier": "s3Bucket",
@@ -54,7 +75,11 @@
   "connections": [
     {
       "sourceIdentifier": "trigger",
-      "targetIdentifier": "create_ready_entity"
+      "targetIdentifier": "create_pending_entity"
+    },
+    {
+      "sourceIdentifier": "create_pending_entity",
+      "targetIdentifier": "mark_ready_entity"
     }
   ]
 }
