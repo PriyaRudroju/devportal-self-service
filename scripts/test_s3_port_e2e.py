@@ -22,13 +22,15 @@ WORKFLOW_FILE = "provision-s3-bucket.yml"
 def api_request(
     method: str,
     url: str,
-    token: str,
+    token: str | None,
     body: dict | None = None,
     *,
     github: bool = False,
 ) -> tuple[int, dict | list | str]:
     data = json.dumps(body).encode("utf-8") if body is not None else None
-    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {token}"}
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     if github:
         headers["Accept"] = "application/vnd.github+json"
         headers["X-GitHub-Api-Version"] = "2022-11-28"
@@ -54,7 +56,7 @@ def get_port_token() -> str:
     status, body = api_request(
         "POST",
         f"{PORT_API_URL}/v1/auth/access_token",
-        "",
+        None,
         {"clientId": client_id, "clientSecret": client_secret},
     )
     if status != 200:
@@ -138,10 +140,8 @@ def wait_for_github_run(github_token: str, branch: str, created_after: str, time
 
 def main() -> int:
     git_ref = os.environ.get("GIT_REF", "feature/s3-git-ref-test")
-    bucket_name = os.environ.get(
-        "BUCKET_NAME",
-        f"devportal-s3-e2e-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
-    )
+    bucket_env = os.environ.get("BUCKET_NAME", "").strip()
+    bucket_name = bucket_env or f"devportal-s3-e2e-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
     github_token = os.environ.get("GITHUB_TOKEN", "").strip()
     if not github_token:
         raise RuntimeError("GITHUB_TOKEN is required")
