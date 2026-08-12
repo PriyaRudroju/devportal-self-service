@@ -118,7 +118,71 @@ def list_github_runs(github_token: str, branch: str, created_after: str) -> list
     return body.get("workflow_runs") or []
 
 
-def wait_for_github_run(github_token: str, branch: str, created_after: str, timeout_sec: int = 300) -> dict:
+def fetch_entity(token: str, blueprint: str, identifier: str) -> dict:
+    status, body = api_request(
+        "GET",
+        f"{PORT_API_URL}/v1/blueprints/{blueprint}/entities/{identifier}",
+        token,
+    )
+    if status != 200 or not isinstance(body, dict):
+        raise RuntimeError(f"Failed to fetch entity {identifier}: {status} {body}")
+    return body.get("entity") or body
+
+
+def fetch_recent_automation_runs(token: str, action_id: str, limit: int = 5) -> list[dict]:
+    url = f"{PORT_API_URL}/v1/actions/runs?actionIdentifier={urllib.parse.quote(action_id, safe='')}&limit={limit}"
+    status, body = api_request("GET", url, token)
+    if status != 200 or not isinstance(body, dict):
+        print(f"WARN: could not fetch automation runs: {status} {body}")
+        return []
+    return body.get("runs") or body.get("actionRuns") or []
+
+
+def print_diagnostics(token: str, port_run_id: str) -> None:
+    print("\n--- Diagnostics ---")
+    try:
+        entity = fetch_entity(token, "s3Bucket", port_run_id)
+        props = entity.get("properties") or {}
+        print(
+            json.dumps(
+                {
+                    "entity_id": entity.get("identifier"),
+                    "gitRef": props.get("gitRef"),
+                    "environment": props.get("environment"),
+                    "status": props.get("status"),
+                    "bucketName": props.get("bucketName"),
+                },
+                indent=2,
+            )
+        )
+    except Exception as exc:
+        print(f"Entity lookup failed: {exc}")
+
+    runs = fetch_recent_automation_runs(token, "trigger_github_on_s3_ready")
+    if not runs:
+        print("No recent automation runs found for trigger_github_on_s3_ready")
+        return
+    print("Recent automation runs:")
+    for run in runs[:3]:
+        print(
+            json.dumps(
+                {
+                    "id": run.get("id") or run.get("identifier"),
+                    "status": run.get("status"),
+                    "statusLabel": run.get("statusLabel"),
+                    "createdAt": run.get("createdAt"),
+                    "link": run.get("link"),
+                },
+                indent=2,
+            )
+        )
+
+def wait_for_github_run(
+    github_token: str,
+    branch: str,
+    created_after: str,
+    timeout_sec: int = 300,
+) -> dict:
     deadline = time.time() + timeout_sec
     while time.time() < deadline:
         runs = list_github_runs(github_token, branch, created_after)
@@ -171,7 +235,13 @@ def main() -> int:
         print("FAIL: Port workflow did not succeed", file=sys.stderr)
         return 1
 
-    github_run = wait_for_github_run(github_token, git_ref, started_at)
+    print_diagnostics(port_token, port_run_id)
+
+    try:
+        github_run = wait_for_github_run(github_token, git_ref, started_at)
+    except RuntimeError as exc:
+        print_diagnostics(port_token, port_run_id)
+        raise
 
     print("\n--- GitHub workflow result ---")
     print(json.dumps(
