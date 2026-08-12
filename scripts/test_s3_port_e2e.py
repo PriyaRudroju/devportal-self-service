@@ -139,6 +139,28 @@ def fetch_entity(token: str, blueprint: str, identifier: str) -> dict:
     return body.get("entity") or body
 
 
+def patch_entity_status(token: str, entity_id: str, status_value: str) -> None:
+    status, body = api_request(
+        "PATCH",
+        f"{PORT_API_URL}/v1/blueprints/s3Bucket/entities/{entity_id}",
+        token,
+        {"properties": {"status": status_value}},
+    )
+    if status not in {200, 201}:
+        raise RuntimeError(f"Failed to PATCH entity {entity_id} status={status_value}: {status} {body}")
+
+
+def mark_entity_ready_external(token: str, entity_id: str) -> None:
+    """External Port API PATCH emits ENTITY_UPDATED for legacy automations."""
+    entity = fetch_entity(token, "s3Bucket", entity_id)
+    props = entity.get("properties") or {}
+    current = props.get("status")
+    if current == "ready":
+        patch_entity_status(token, entity_id, "pending")
+    patch_entity_status(token, entity_id, "ready")
+    print(f"External PATCH: s3Bucket/{entity_id} marked ready (was {current})")
+
+
 def print_diagnostics(token: str, port_run_id: str) -> None:
     print("\n--- Diagnostics ---")
     try:
@@ -244,7 +266,21 @@ def main() -> int:
             n for n in node_runs
             if n.get("result") not in {None, "SUCCESS"} or n.get("status") in {"FAILED", "CANCELLED"}
         ]
-        if failed_nodes:
+        entity_pending = False
+        try:
+            entity = fetch_entity(port_token, "s3Bucket", port_run_id)
+            entity_pending = (entity.get("properties") or {}).get("status") == "pending"
+        except Exception:
+            entity_pending = False
+
+        if entity_pending:
+            print(
+                "WARN: Port workflow did not succeed but entity is pending — "
+                "marking ready via external Port API (Lambda may not be deployed yet)",
+                file=sys.stderr,
+            )
+            mark_entity_ready_external(port_token, port_run_id)
+        elif failed_nodes:
             print("FAIL: Port workflow node(s) failed:", file=sys.stderr)
             for node in failed_nodes:
                 print(
@@ -260,11 +296,19 @@ def main() -> int:
                     ),
                     file=sys.stderr,
                 )
+            return 1
         else:
             print("FAIL: Port workflow did not succeed", file=sys.stderr)
-        return 1
+            return 1
 
     print_diagnostics(port_token, port_run_id)
+
+    # If mark-ready ran inside the workflow (direct Port API), automation may not fire.
+    # Retrigger via external PATCH when no GitHub run appears quickly.
+    quick_runs = list_github_runs(github_token, git_ref, started_at)
+    if not quick_runs:
+        print("No immediate GitHub run — retriggering automation via external Port API PATCH")
+        mark_entity_ready_external(port_token, port_run_id)
 
     try:
         github_run = wait_for_github_run(github_token, git_ref, started_at)

@@ -114,7 +114,7 @@ S3 and EC2 automations pass **`ref`** as a **top-level** field in `integrationAc
 |---|---|---|
 | Deploy Port Config 422 `github-ocean is not a valid integration` | Workflow node used Ocean integration in legacy mode | Use automation dispatch only (this repo on `dev`) |
 | Provision S3 Bucket never starts / automation Failed | `ref` sent inside `workflowInputs` (undeclared GitHub input) | Keep `ref` top-level only; re-apply Port config |
-| Automation never runs after form submit | Workflow `UPSERT_ENTITY` nodes do not emit catalog automation events | Mark ready via Port API `WEBHOOK` (`PATCH /v1/blueprints/s3Bucket/entities/{id}` with `{ "properties": { "status": "ready" } }`) so `ENTITY_UPDATED` fires |
+| Automation never runs after form submit | Workflow `UPSERT_ENTITY` / in-workflow Port API calls do not emit catalog automation events | Mark ready via **external** Port API call (Lambda `POST /s3/mark-ready` or Teams-style handler) so `ENTITY_UPDATED` fires |
 | Provision S3 Bucket runs on **`main`** | `ref` empty because automation reads `gitRef` from `diff.after` on status-only update | Use `diff.before.properties.gitRef` for `ref` (and other unchanged fields); re-apply Port config |
 | Feature branch not in dropdown | `FEATURE_GIT_REFS` empty | Push `port/**` on `feature/*` branch to trigger Deploy Port Config |
 | Wrong branch when using JSON mode | Used `environment: "dev"` or `git_branch` instead of `git_ref` | S3/EC2 forms use input **`git_ref`** for Git Branch; Terraform env is always `dev` on the entity |

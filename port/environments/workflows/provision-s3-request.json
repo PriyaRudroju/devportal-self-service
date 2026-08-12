@@ -52,16 +52,14 @@
     },
     {
       "identifier": "mark_ready_entity",
-      "title": "Mark Catalog Entity Ready (Port API)",
+      "title": "Mark Catalog Entity Ready (Lambda)",
       "config": {
         "type": "WEBHOOK",
-        "url": "https://api.port.io/v1/blueprints/s3Bucket/entities/{{ .workflowRun.identifier }}",
-        "method": "PATCH",
+        "url": "{{API_GATEWAY_URL}}/s3/mark-ready",
+        "method": "POST",
         "synchronized": true,
         "body": {
-          "properties": {
-            "status": "ready"
-          }
+          "entityId": "{{ .workflowRun.identifier }}"
         }
       }
     }

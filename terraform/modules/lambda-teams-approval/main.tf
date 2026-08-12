@@ -81,6 +81,18 @@ resource "aws_apigatewayv2_integration" "lambda" {
   integration_method     = "POST"
 }
 
+resource "aws_apigatewayv2_route" "teams_notify" {
+  api_id    = aws_apigatewayv2_api.teams_approval.id
+  route_key = "POST /teams/notify"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "s3_mark_ready" {
+  api_id    = aws_apigatewayv2_api.teams_approval.id
+  route_key = "POST /s3/mark-ready"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
 resource "aws_apigatewayv2_route" "ec2_request" {
   api_id    = aws_apigatewayv2_api.teams_approval.id
   route_key = "POST /ec2/request"

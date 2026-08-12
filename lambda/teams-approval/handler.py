@@ -61,6 +61,25 @@ def _get_port_access_token() -> str:
     return access_token
 
 
+def _patch_port_entity(blueprint: str, identifier: str, properties: dict) -> dict:
+    port_api_url = _port_api_url()
+    token = _get_port_access_token()
+
+    payload = json.dumps({"properties": properties}).encode("utf-8")
+    request = urllib.request.Request(
+        f"{port_api_url}/v1/blueprints/{blueprint}/entities/{identifier}",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
+        method="PATCH",
+    )
+
+    with urllib.request.urlopen(request, timeout=30) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
 def _upsert_port_entity(identifier: str, title: str, properties: dict) -> dict:
     port_api_url = _port_api_url()
     blueprint = _port_blueprint()
@@ -221,6 +240,26 @@ def _normalize_ec2_request(payload: dict) -> dict:
     }
 
 
+def handle_s3_mark_ready(event: dict) -> dict:
+    """Mark S3 catalog entity ready via Port API (external call emits ENTITY_UPDATED)."""
+    payload = _parse_body(event)
+    entity_id = (payload.get("entityId") or payload.get("runId") or "").strip()
+    if not entity_id:
+        return _response(400, {"error": "entityId is required"})
+
+    blueprint = _optional_env("S3_PORT_BLUEPRINT", "s3Bucket")
+    entity = _patch_port_entity(blueprint, entity_id, {"status": "ready"})
+
+    return _response(
+        200,
+        {
+            "message": "S3 entity marked ready",
+            "entityId": entity_id,
+            "portEntity": entity,
+        },
+    )
+
+
 def handle_teams_notify(event: dict) -> dict:
     """Send Teams approval card only (Port Workflow owns catalog UPSERT)."""
     payload = _normalize_ec2_request(_parse_body(event))
@@ -339,6 +378,9 @@ def lambda_handler(event, context):
 
         if method == "POST" and _route_matches(raw_path, "/teams/notify"):
             return handle_teams_notify(event)
+
+        if method == "POST" and _route_matches(raw_path, "/s3/mark-ready"):
+            return handle_s3_mark_ready(event)
 
         if method == "POST" and _route_matches(raw_path, "/ec2/request"):
             return handle_ec2_request(event)
