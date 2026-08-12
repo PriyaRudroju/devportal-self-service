@@ -116,5 +116,6 @@ S3 and EC2 automations pass **`ref`** as a **top-level** field in `integrationAc
 | Provision S3 Bucket never starts / automation Failed | `ref` sent inside `workflowInputs` (undeclared GitHub input) | Keep `ref` top-level only; re-apply Port config |
 | Provision S3 Bucket runs on **`main`** | `ref` missing or empty at dispatch | Re-apply Port config; confirm top-level `ref`; entity `gitRef` set |
 | Feature branch not in dropdown | `FEATURE_GIT_REFS` empty | Push `port/**` on `feature/*` branch to trigger Deploy Port Config |
+| Wrong branch when using JSON mode | Used `environment: "dev"` or `git_branch` instead of `git_ref` | S3/EC2 forms use input **`git_ref`** for Git Branch; Terraform env is always `dev` on the entity |
 | Old workflow inputs (`port_context`) in run logs | Dispatch used **`main`** branch workflow file | Confirm newest run shows correct branch and input **`port_run_id`** |
 | `PATCH_RUN` 404 for `wfr_...` id | Port **workflow** runs use `wfr_` ids; `PATCH_RUN` only applies to **action** runs | S3 workflow uses catalog UPSERT only; automation uses `reportWorkflowStatus` |
