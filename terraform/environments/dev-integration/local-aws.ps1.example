@@ -1,0 +1,8 @@
+# Copy to local-aws.ps1 (same folder), fill in values, save.
+# local-aws.ps1 is gitignored. Run before terraform plan/apply:
+#   . .\local-aws.ps1
+
+$env:AWS_ACCESS_KEY_ID     = "PASTE_AWS_ACCESS_KEY_ID"
+$env:AWS_SECRET_ACCESS_KEY = "PASTE_AWS_SECRET_ACCESS_KEY"
+$env:AWS_DEFAULT_REGION    = "us-east-2"
+$env:TF_CLOUD_ORGANIZATION = "pri"
