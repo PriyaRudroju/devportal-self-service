@@ -117,4 +117,6 @@ See [`docs/GITHUB_SETUP.md`](../docs/GITHUB_SETUP.md) for branch protection and 
 | Feature branch missing in Port dropdown | Push `port/**` on the feature branch so Deploy Port Config injects `FEATURE_GIT_REFS` | 
 | Wrong API URL in Port | Check GitHub Environment variable for that env |
 | EC2 workflow runs wrong branch | Automation `ref` must match branch (`dev`, `qa`, `main`) |
+| S3 workflow runs on **`main`** instead of selected Git Branch | S3 automation must read `gitRef` from **`diff.before.properties.gitRef`** (not `diff.after`); re-apply Port config. Run `python scripts/verify_s3_github_ref.py --check-live` |
+| S3 GitHub dispatch never starts | Mark-ready must use **external** Port API (Lambda `POST /s3/mark-ready` or E2E PATCH) so `ENTITY_UPDATED` fires; workflow-internal PATCH does not trigger legacy automations |
 | 409 on create | Normal — script retries with PUT/PATCH update |
