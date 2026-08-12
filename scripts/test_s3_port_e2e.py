@@ -17,7 +17,48 @@ GITHUB_API = "https://api.github.com"
 GITHUB_ORG = os.environ.get("GITHUB_ORG", "PriyaRudroju")
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "devportal-self-service")
 WORKFLOW_FILE = "provision-s3-bucket.yml"
+DEBUG_LOG_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "debug-985163.log",
+)
 
+
+# #region agent log
+def debug_log(hypothesis_id: str, location: str, message: str, data: dict | None = None) -> None:
+    payload = {
+        "sessionId": "985163",
+        "hypothesisId": hypothesis_id,
+        "location": location,
+        "message": message,
+        "data": data or {},
+        "timestamp": int(time.time() * 1000),
+    }
+    try:
+        with open(DEBUG_LOG_PATH, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(payload) + "\n")
+    except OSError:
+        pass
+# #endregion
+
+
+def fetch_live_s3_automation(token: str) -> dict:
+    status, body = api_request(
+        "GET",
+        f"{PORT_API_URL}/v1/actions/trigger_github_on_s3_ready",
+        token,
+    )
+    if status != 200 or not isinstance(body, dict):
+        return {"fetch_error": f"{status} {body}"}
+    action = body.get("action") or body
+    invocation = action.get("invocationMethod") or {}
+    props = invocation.get("integrationActionExecutionProperties") or {}
+    return {
+        "identifier": action.get("identifier"),
+        "published": action.get("publish"),
+        "ref": props.get("ref") or find_dispatch_ref(action),
+        "workflow": props.get("workflow"),
+        "workflowInputs": props.get("workflowInputs"),
+    }
 
 def api_request(
     method: str,
@@ -168,11 +209,24 @@ def mark_entity_ready_external(token: str, entity_id: str) -> None:
     current = props.get("status")
     git_ref = props.get("gitRef")
     print(f"Entity before mark-ready: status={current} gitRef={git_ref}")
+    # #region agent log
+    debug_log("H1", "mark_entity_ready_external:before", "entity state before mark-ready", {
+        "entity_id": entity_id, "status": current, "gitRef": git_ref,
+        "bucketName": props.get("bucketName"), "environment": props.get("environment"),
+    })
+    # #endregion
     if current == "ready":
         patch_entity_status(token, entity_id, "pending")
         time.sleep(2)
     patch_entity_status(token, entity_id, "ready")
+    after = fetch_entity(token, "s3Bucket", entity_id)
+    after_props = after.get("properties") or {}
     print(f"External PATCH: s3Bucket/{entity_id} marked ready (was {current})")
+    # #region agent log
+    debug_log("H4", "mark_entity_ready_external:after", "entity state after mark-ready", {
+        "entity_id": entity_id, "status": after_props.get("status"), "gitRef": after_props.get("gitRef"),
+    })
+    # #endregion
 
 
 def find_dispatch_ref(obj: object) -> str | None:
@@ -220,8 +274,14 @@ def wait_for_s3_automation_run(token: str, started_after: str, timeout_sec: int 
                         detail["workflowInputs"] = props.get("workflowInputs")
                         detail["statusLabel"] = action_run.get("statusLabel") or run.get("statusLabel")
                 print(f"Port automation run detected: {json.dumps(detail, indent=2)}")
+                # #region agent log
+                debug_log("H2", "wait_for_s3_automation_run", "automation run found", detail)
+                # #endregion
                 return detail
         time.sleep(5)
+    # #region agent log
+    debug_log("H2", "wait_for_s3_automation_run", "no automation run within timeout", {"started_after": started_after})
+    # #endregion
     return None
 
 
@@ -324,6 +384,15 @@ def wait_for_github_run(
         time.sleep(10)
 
     other_branches = list_github_runs(github_token, created_after=created_after)
+    # #region agent log
+    debug_log("H5", "wait_for_github_run:timeout", "github poll exhausted", {
+        "expected_branch": branch,
+        "recent_runs": [
+            {"id": r.get("id"), "branch": r.get("head_branch"), "status": r.get("status"), "created_at": r.get("created_at")}
+            for r in other_branches[:5]
+        ],
+    })
+    # #endregion
     wrong_branch = [r for r in other_branches if r.get("head_branch") != branch]
     if wrong_branch:
         run = wrong_branch[0]
@@ -350,6 +419,12 @@ def main() -> int:
     print(f"started_at={started_at}")
 
     port_token = get_port_token()
+    live_automation = fetch_live_s3_automation(port_token)
+    print(f"Live Port automation: {json.dumps(live_automation, indent=2)}")
+    # #region agent log
+    debug_log("H3", "main:live_automation", "live automation config from Port API", live_automation)
+    # #endregion
+
     port_run_id = trigger_port_workflow(port_token, bucket_name, git_ref)
     port_run = wait_for_port_run(port_token, port_run_id)
 

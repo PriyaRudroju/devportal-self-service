@@ -74,6 +74,16 @@ jobs:
           BUCKET_NAME: ${{ github.event.inputs.bucket_name }}
         run: python scripts/test_s3_port_e2e.py
 
+      - name: Print debug log on failure
+        if: failure()
+        run: |
+          if [ -f debug-985163.log ]; then
+            echo "=== debug-985163.log ==="
+            cat debug-985163.log
+          else
+            echo "No debug log file found"
+          fi
+
       - name: Summary
         if: always()
         run: |
