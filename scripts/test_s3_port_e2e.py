@@ -212,6 +212,7 @@ def mark_entity_ready_external(token: str, entity_id: str) -> None:
     # #region agent log
     debug_log("H1", "mark_entity_ready_external:before", "entity state before mark-ready", {
         "entity_id": entity_id, "status": current, "gitRef": git_ref,
+        "portRunId": props.get("portRunId"),
         "bucketName": props.get("bucketName"), "environment": props.get("environment"),
     })
     # #endregion
@@ -225,6 +226,7 @@ def mark_entity_ready_external(token: str, entity_id: str) -> None:
     # #region agent log
     debug_log("H4", "mark_entity_ready_external:after", "entity state after mark-ready", {
         "entity_id": entity_id, "status": after_props.get("status"), "gitRef": after_props.get("gitRef"),
+        "portRunId": after_props.get("portRunId"),
     })
     # #endregion
 
