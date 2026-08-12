@@ -163,6 +163,8 @@ def prepare_integration_automation_payload(payload: dict, variables: dict[str, s
         )
 
     props["ref"] = ref
+    if ref and "ref" not in workflow_inputs:
+        workflow_inputs["ref"] = ref
     props["workflowInputs"] = workflow_inputs
     invocation["integrationActionExecutionProperties"] = props
     payload["invocationMethod"] = invocation
