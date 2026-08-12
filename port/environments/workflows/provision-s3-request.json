@@ -20,8 +20,7 @@
             "git_ref": {
               "title": "Git Branch",
               "type": "string",
-              "description": "dev = stable dev branch. Feature branch names are for testing Port/Git changes only — Terraform still targets dev infrastructure.",
-              "enum": {{GIT_REF_ENUM}},
+              "description": "Git branch to run the GitHub workflow on (e.g. dev or feature/my-test). Terraform still targets dev infrastructure.",
               "default": "{{GIT_REF_DEFAULT}}"
             }
           },

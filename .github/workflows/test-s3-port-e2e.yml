@@ -45,7 +45,6 @@ jobs:
           GITHUB_ORG: PriyaRudroju
           GITHUB_REPO: devportal-self-service
           AWS_REGION: us-east-2
-          FEATURE_GIT_REFS: feature/s3-git-ref-test
         run: python scripts/apply_port_config.py --env dev --github-mode legacy
 
       - name: Verify live Port automation GitHub ref

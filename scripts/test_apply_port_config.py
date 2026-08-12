@@ -13,7 +13,6 @@ import sys
 sys.path.insert(0, str(sys_path))
 
 from apply_port_config import (  # noqa: E402
-    build_git_ref_enum,
     is_port_runtime_template,
     prepare_integration_automation_payload,
     prepare_action_payload,
@@ -64,18 +63,7 @@ class TestS3AutomationPayload(unittest.TestCase):
         inputs = result["invocationMethod"]["integrationActionExecutionProperties"]["workflowInputs"]
         self.assertIn("diff.before.properties.bucketName", inputs["bucket_name"])
         self.assertIn("diff.before.properties.environment", inputs["environment"])
-        self.assertIn("context.entityIdentifier", inputs["port_run_id"])
-
-
-class TestGitRefEnum(unittest.TestCase):
-    def test_default_and_feature_refs(self) -> None:
-        variables = {"GIT_REF_DEFAULT": "dev", "FEATURE_GIT_REFS": "feature/a,feature/b"}
-        enum = json.loads(build_git_ref_enum(variables))
-        self.assertEqual(enum, ["dev", "feature/a", "feature/b"])
-
-    def test_empty_feature_refs(self) -> None:
-        enum = json.loads(build_git_ref_enum({"GIT_REF_DEFAULT": "dev", "FEATURE_GIT_REFS": ""}))
-        self.assertEqual(enum, ["dev"])
+        self.assertIn("diff.before.properties.portRunId", inputs["port_run_id"])
 
 
 class TestPrepareIntegrationAutomationPayload(unittest.TestCase):
