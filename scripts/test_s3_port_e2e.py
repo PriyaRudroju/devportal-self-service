@@ -239,7 +239,29 @@ def main() -> int:
     ))
 
     if port_run.get("result") != "SUCCESS":
-        print("FAIL: Port workflow did not succeed", file=sys.stderr)
+        node_runs = port_run.get("nodeRuns") or []
+        failed_nodes = [
+            n for n in node_runs
+            if n.get("result") not in {None, "SUCCESS"} or n.get("status") in {"FAILED", "CANCELLED"}
+        ]
+        if failed_nodes:
+            print("FAIL: Port workflow node(s) failed:", file=sys.stderr)
+            for node in failed_nodes:
+                print(
+                    json.dumps(
+                        {
+                            "identifier": node.get("identifier"),
+                            "title": node.get("title"),
+                            "status": node.get("status"),
+                            "result": node.get("result"),
+                            "error": node.get("error"),
+                        },
+                        indent=2,
+                    ),
+                    file=sys.stderr,
+                )
+        else:
+            print("FAIL: Port workflow did not succeed", file=sys.stderr)
         return 1
 
     print_diagnostics(port_token, port_run_id)

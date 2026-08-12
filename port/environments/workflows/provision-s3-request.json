@@ -55,20 +55,12 @@
       "title": "Mark Catalog Entity Ready (Port API)",
       "config": {
         "type": "WEBHOOK",
-        "url": "https://api.port.io/v1/blueprints/s3Bucket/entities",
-        "method": "POST",
+        "url": "https://api.port.io/v1/blueprints/s3Bucket/entities/{{ .workflowRun.identifier }}",
+        "method": "PATCH",
         "synchronized": true,
         "body": {
-          "identifier": "{{ .workflowRun.identifier }}",
-          "title": "S3 {{ .outputs.trigger.bucket_name }}",
           "properties": {
-            "bucketName": "{{ .outputs.trigger.bucket_name }}",
-            "gitRef": "{{ .outputs.trigger.git_ref }}",
-            "environment": "dev",
-            "region": "{{AWS_REGION}}",
-            "status": "ready",
-            "requestedBy": "{{ .workflowRun.trigger.by.email }}",
-            "portRunId": "{{ .workflowRun.identifier }}"
+            "status": "ready"
           }
         }
       }

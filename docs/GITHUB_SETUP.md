@@ -96,7 +96,7 @@ Each branch should contain **only** these Port GitOps workflows (plus runtime wo
 
 S3 and EC2 automations pass **`ref`** as a **top-level dispatch branch parameter** in `integrationActionExecutionProperties` from entity **`gitRef`** (form **Git Branch**). **`ref` is not a GitHub workflow input** — do not include it in `workflowInputs`. If `ref` is missing at the top level, GitHub defaults to **`main`**.
 
-Legacy EC2 automation reads `gitRef` from the entity before approval status changes (unchanged fields are omitted from update diffs).
+On `ENTITY_UPDATED` triggers (S3 `pending → ready`, EC2 `pending → approved`), Port omits **unchanged** properties from `diff.after`. Read **`gitRef` from `diff.before.properties.gitRef`** in automation templates — same pattern as EC2. Using `diff.after` leaves `ref` empty and GitHub defaults to **`main`**.
 
 | Branch | `GIT_REF_DEFAULT` in `config.env` |
 |---|---|
@@ -114,8 +114,8 @@ S3 and EC2 automations pass **`ref`** as a **top-level** field in `integrationAc
 |---|---|---|
 | Deploy Port Config 422 `github-ocean is not a valid integration` | Workflow node used Ocean integration in legacy mode | Use automation dispatch only (this repo on `dev`) |
 | Provision S3 Bucket never starts / automation Failed | `ref` sent inside `workflowInputs` (undeclared GitHub input) | Keep `ref` top-level only; re-apply Port config |
-| Automation never runs after form submit | Workflow `UPSERT_ENTITY` nodes do not emit catalog automation events | Mark ready via Port API `WEBHOOK` (`POST /v1/blueprints/s3Bucket/entities`) so `ENTITY_UPDATED` fires (same pattern as EC2 Teams Lambda) |
-| Provision S3 Bucket runs on **`main`** | `ref` missing or empty at dispatch | Re-apply Port config; confirm top-level `ref`; entity `gitRef` set |
+| Automation never runs after form submit | Workflow `UPSERT_ENTITY` nodes do not emit catalog automation events | Mark ready via Port API `WEBHOOK` (`PATCH /v1/blueprints/s3Bucket/entities/{id}` with `{ "properties": { "status": "ready" } }`) so `ENTITY_UPDATED` fires |
+| Provision S3 Bucket runs on **`main`** | `ref` empty because automation reads `gitRef` from `diff.after` on status-only update | Use `diff.before.properties.gitRef` for `ref` (and other unchanged fields); re-apply Port config |
 | Feature branch not in dropdown | `FEATURE_GIT_REFS` empty | Push `port/**` on `feature/*` branch to trigger Deploy Port Config |
 | Wrong branch when using JSON mode | Used `environment: "dev"` or `git_branch` instead of `git_ref` | S3/EC2 forms use input **`git_ref`** for Git Branch; Terraform env is always `dev` on the entity |
 | Old workflow inputs (`port_context`) in run logs | Dispatch used **`main`** branch workflow file | Confirm newest run shows correct branch and input **`port_run_id`** |
