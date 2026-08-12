@@ -1,0 +1,4 @@
+{
+  "name": "devportal-self-service",
+  "install": "bash .cursor/install.sh"
+}
