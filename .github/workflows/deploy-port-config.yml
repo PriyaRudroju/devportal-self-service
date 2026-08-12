@@ -34,6 +34,9 @@ jobs:
             echo "FEATURE_GIT_REFS not injected (branch=${BRANCH})"
           fi
 
+      - name: Verify S3 automation GitHub ref template (repo)
+        run: python scripts/verify_s3_github_ref.py
+
       - name: Apply Port configuration
         env:
           PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
@@ -46,6 +49,13 @@ jobs:
           GITHUB_REPO: devportal-self-service
           AWS_REGION: us-east-2
         run: python scripts/apply_port_config.py --env dev --github-mode legacy
+
+      - name: Verify live Port automation GitHub ref
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_API_URL: https://api.port.io
+        run: python scripts/verify_s3_github_ref.py --check-live
 
       - name: Summary
         run: |

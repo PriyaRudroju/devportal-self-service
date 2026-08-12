@@ -197,12 +197,27 @@ def print_diagnostics(token: str, port_run_id: str) -> None:
         if s3_runs:
             print("Recent S3 automation runs:")
             for run in s3_runs[:3]:
-                print(json.dumps({
-                    "id": run.get("id") or run.get("identifier"),
+                run_id = run.get("id") or run.get("identifier")
+                summary = {
+                    "id": run_id,
                     "status": run.get("status"),
                     "statusLabel": run.get("statusLabel"),
                     "createdAt": run.get("createdAt"),
-                }, indent=2))
+                }
+                if run_id:
+                    detail_status, detail_body = api_request(
+                        "GET",
+                        f"{PORT_API_URL}/v1/actions/runs/{run_id}",
+                        token,
+                    )
+                    if detail_status == 200 and isinstance(detail_body, dict):
+                        action_run = detail_body.get("actionRun") or detail_body.get("run") or detail_body
+                        invocation = action_run.get("invocation") or {}
+                        props = invocation.get("integrationActionExecutionProperties") or {}
+                        summary["dispatch_ref"] = props.get("ref")
+                        summary["workflow"] = props.get("workflow")
+                        summary["workflowInputs"] = props.get("workflowInputs")
+                print(json.dumps(summary, indent=2))
             return
     print("No recent automation runs matched trigger_github_on_s3_ready in last 10 action runs")
 

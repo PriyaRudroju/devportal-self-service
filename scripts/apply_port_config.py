@@ -141,6 +141,17 @@ def resolve_installation_id(variables: dict[str, str]) -> str:
     return os.environ.get("GITHUB_INSTALLATION_ID", "").strip()
 
 
+def is_port_runtime_template(value: object) -> bool:
+    """True for Port event/JQ templates (e.g. {{ .event.diff.before.properties.gitRef }})."""
+    if not isinstance(value, str):
+        return False
+    stripped = value.strip()
+    if not stripped.startswith("{{") or not stripped.endswith("}}"):
+        return False
+    inner = stripped[2:-2].strip()
+    return inner.startswith(".") or ".event." in inner or ".diff." in inner
+
+
 def prepare_integration_automation_payload(payload: dict, variables: dict[str, str]) -> dict:
     """Hoist GitHub dispatch ref to top-level execution properties for legacy Sunset app."""
     invocation = payload.get("invocationMethod")
@@ -156,7 +167,7 @@ def prepare_integration_automation_payload(payload: dict, variables: dict[str, s
 
     ref = props.get("ref") or workflow_inputs.pop("ref", None)
     workflow_inputs.pop("ref", None)
-    if not isinstance(ref, str) or not ref.strip():
+    if (not isinstance(ref, str) or not ref.strip()) and not is_port_runtime_template(ref):
         ref = (
             variables.get("GITHUB_WORKFLOW_REF")
             or variables.get("GIT_REF_DEFAULT")

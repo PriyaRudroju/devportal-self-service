@@ -25,3 +25,9 @@ jobs:
           API_GATEWAY_URL: ${{ vars.API_GATEWAY_URL }}
           TFC_WORKSPACE: ${{ vars.TFC_WORKSPACE }}
         run: python scripts/apply_port_config.py --env dev --plan --github-mode legacy
+
+      - name: Verify S3 automation GitHub ref template
+        run: python scripts/verify_s3_github_ref.py
+
+      - name: Unit test Port config helpers
+        run: python scripts/test_apply_port_config.py

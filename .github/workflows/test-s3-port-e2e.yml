@@ -17,7 +17,9 @@ on:
     paths:
       - ".github/workflows/test-s3-port-e2e.yml"
       - "scripts/test_s3_port_e2e.py"
-      - "port/environments/workflows/provision-s3-request.json"
+      - "scripts/verify_s3_github_ref.py"
+      - "scripts/apply_port_config.py"
+      - "port/**"
 
 jobs:
   e2e:
@@ -28,6 +30,9 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: Verify S3 automation GitHub ref template (repo)
+        run: python scripts/verify_s3_github_ref.py
 
       - name: Apply latest Port config
         env:
@@ -42,6 +47,13 @@ jobs:
           AWS_REGION: us-east-2
           FEATURE_GIT_REFS: feature/s3-git-ref-test
         run: python scripts/apply_port_config.py --env dev --github-mode legacy
+
+      - name: Verify live Port automation GitHub ref
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_API_URL: https://api.port.io
+        run: python scripts/verify_s3_github_ref.py --check-live
 
       - name: Run S3 Port E2E test
         env:
