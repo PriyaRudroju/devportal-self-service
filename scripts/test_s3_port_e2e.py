@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Trigger Port S3 self-service workflow and verify GitHub dispatch."""
+"""Trigger Port S3 self-service workflow and verify GitHub dispatch.
+
+Requires main branch provision-s3-bucket.yml to declare port_run_id (Port legacy
+validates workflow_dispatch inputs against the default branch workflow file).
+"""
 
 from __future__ import annotations
 
