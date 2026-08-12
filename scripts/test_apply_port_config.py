@@ -17,6 +17,7 @@ from apply_port_config import (  # noqa: E402
     is_port_runtime_template,
     prepare_integration_automation_payload,
     prepare_action_payload,
+    prepare_workflow_payload,
     substitute,
 )
 
@@ -111,6 +112,33 @@ class TestPrepareIntegrationAutomationPayload(unittest.TestCase):
         result = prepare_integration_automation_payload(payload, {"GIT_REF_DEFAULT": "dev"})
         props = result["invocationMethod"]["integrationActionExecutionProperties"]
         self.assertEqual(props["ref"], "dev")
+
+
+class TestPrepareWorkflowPayload(unittest.TestCase):
+    def test_hoists_ref_in_workflow_integration_node(self) -> None:
+        payload = {
+            "identifier": "provision_s3_after_ready",
+            "nodes": [
+                {
+                    "identifier": "dispatch_github",
+                    "config": {
+                        "type": "INTEGRATION_ACTION",
+                        "integrationActionType": "dispatch_workflow",
+                        "integrationActionExecutionProperties": {
+                            "workflow": "provision-s3-bucket.yml",
+                            "workflowInputs": {
+                                "ref": "{{ .outputs.trigger.diff.before.properties.gitRef }}",
+                                "bucket_name": "x",
+                            },
+                        },
+                    },
+                }
+            ],
+        }
+        result = prepare_workflow_payload(payload, {"GIT_REF_DEFAULT": "dev"})
+        props = result["nodes"][0]["config"]["integrationActionExecutionProperties"]
+        self.assertEqual(props["ref"], "{{ .outputs.trigger.diff.before.properties.gitRef }}")
+        self.assertNotIn("ref", props["workflowInputs"])
 
 
 if __name__ == "__main__":

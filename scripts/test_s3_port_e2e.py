@@ -17,6 +17,8 @@ GITHUB_API = "https://api.github.com"
 GITHUB_ORG = os.environ.get("GITHUB_ORG", "PriyaRudroju")
 GITHUB_REPO = os.environ.get("GITHUB_REPO", "devportal-self-service")
 WORKFLOW_FILE = "provision-s3-bucket.yml"
+S3_AUTOMATION_ID = "trigger_github_on_s3_ready"
+S3_DISPATCH_WORKFLOW_ID = "provision_s3_after_ready"
 DEBUG_LOG_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "debug-985163.log",
@@ -247,6 +249,113 @@ def find_dispatch_ref(obj: object) -> str | None:
     return None
 
 
+def poll_s3_automation_run(token: str, started_after: str) -> dict | None:
+    status, body = api_request("GET", f"{PORT_API_URL}/v1/actions/runs?limit=20", token)
+    if status != 200 or not isinstance(body, dict):
+        return None
+    runs = body.get("runs") or body.get("actionRuns") or []
+    for run in runs:
+        action_id = (run.get("action") or {}).get("identifier") or run.get("actionIdentifier")
+        if action_id != S3_AUTOMATION_ID:
+            continue
+        created_at = run.get("createdAt") or run.get("created_at") or ""
+        if created_at and created_at < started_after:
+            continue
+        run_id = run.get("id") or run.get("identifier")
+        detail: dict = {"kind": "automation", "id": run_id, "status": run.get("status"), "createdAt": created_at}
+        if run_id:
+            detail_status, detail_body = api_request(
+                "GET",
+                f"{PORT_API_URL}/v1/actions/runs/{run_id}",
+                token,
+            )
+            if detail_status == 200 and isinstance(detail_body, dict):
+                action_run = detail_body.get("actionRun") or detail_body.get("run") or detail_body
+                invocation = action_run.get("invocation") or {}
+                props = invocation.get("integrationActionExecutionProperties") or {}
+                detail["dispatch_ref"] = props.get("ref") or find_dispatch_ref(invocation)
+                detail["workflowInputs"] = props.get("workflowInputs")
+                detail["statusLabel"] = action_run.get("statusLabel") or run.get("statusLabel")
+        return detail
+    return None
+
+
+def poll_s3_port_workflow_run(token: str, started_after: str) -> dict | None:
+    status, body = api_request("GET", f"{PORT_API_URL}/v1/workflows/runs?limit=20", token)
+    if status != 200 or not isinstance(body, dict):
+        return None
+    runs = body.get("runs") or body.get("workflowRuns") or []
+    for run in runs:
+        workflow_id = (run.get("workflow") or {}).get("identifier") or run.get("workflowIdentifier")
+        if workflow_id != S3_DISPATCH_WORKFLOW_ID:
+            continue
+        created_at = run.get("createdAt") or run.get("created_at") or ""
+        if created_at and created_at < started_after:
+            continue
+        run_id = run.get("id") or run.get("identifier")
+        detail: dict = {
+            "kind": "workflow",
+            "id": run_id,
+            "status": run.get("status"),
+            "result": run.get("result"),
+            "createdAt": created_at,
+        }
+        if run_id:
+            detail_status, detail_body = api_request(
+                "GET",
+                f"{PORT_API_URL}/v1/workflows/runs/{run_id}",
+                token,
+            )
+            if detail_status == 200 and isinstance(detail_body, dict):
+                workflow_run = detail_body.get("workflowRun") or detail_body
+                detail["result"] = workflow_run.get("result") or detail.get("result")
+                detail["status"] = workflow_run.get("status") or detail.get("status")
+                for node in workflow_run.get("nodeRuns") or []:
+                    if node.get("identifier") == "dispatch_github":
+                        detail["dispatch_node"] = {
+                            "status": node.get("status"),
+                            "result": node.get("result"),
+                            "error": node.get("error"),
+                        }
+        return detail
+    return None
+
+
+def wait_for_s3_dispatch(token: str, started_after: str, timeout_sec: int = 120) -> dict | None:
+    """Wait for legacy automation or EVENT_TRIGGER workflow dispatch."""
+    deadline = time.time() + timeout_sec
+    while time.time() < deadline:
+        automation_run = poll_s3_automation_run(token, started_after)
+        if automation_run:
+            print(f"Port automation run detected: {json.dumps(automation_run, indent=2)}")
+            debug_log("H2", "wait_for_s3_dispatch", "automation run found", automation_run)
+            status_label = (automation_run.get("statusLabel") or "").upper()
+            if status_label in {"FAILURE", "FAILED"}:
+                raise RuntimeError(
+                    f"Port automation {S3_AUTOMATION_ID} failed: {json.dumps(automation_run)}"
+                )
+            return automation_run
+        workflow_run = poll_s3_port_workflow_run(token, started_after)
+        if workflow_run:
+            print(f"Port workflow run detected: {json.dumps(workflow_run, indent=2)}")
+            debug_log("H2", "wait_for_s3_dispatch", "workflow run found", workflow_run)
+            dispatch_node = workflow_run.get("dispatch_node") or {}
+            if dispatch_node.get("result") not in {None, "SUCCESS"} or dispatch_node.get("status") in {
+                "FAILED",
+                "CANCELLED",
+            }:
+                raise RuntimeError(
+                    f"Port workflow {S3_DISPATCH_WORKFLOW_ID} dispatch node failed: "
+                    f"{json.dumps(workflow_run)}"
+                )
+            return workflow_run
+        time.sleep(5)
+    debug_log("H2", "wait_for_s3_dispatch", "no automation or workflow dispatch within timeout", {
+        "started_after": started_after,
+    })
+    return None
+
+
 def wait_for_s3_automation_run(token: str, started_after: str, timeout_sec: int = 120) -> dict | None:
     deadline = time.time() + timeout_sec
     while time.time() < deadline:
@@ -255,7 +364,7 @@ def wait_for_s3_automation_run(token: str, started_after: str, timeout_sec: int 
             runs = body.get("runs") or body.get("actionRuns") or []
             for run in runs:
                 action_id = (run.get("action") or {}).get("identifier") or run.get("actionIdentifier")
-                if action_id != "trigger_github_on_s3_ready":
+                if action_id != S3_AUTOMATION_ID:
                     continue
                 created_at = run.get("createdAt") or run.get("created_at") or ""
                 if created_at and created_at < started_after:
@@ -317,8 +426,8 @@ def print_diagnostics(token: str, port_run_id: str) -> None:
         runs = body.get("runs") or body.get("actionRuns") or []
         s3_runs = [
             run for run in runs
-            if (run.get("action") or {}).get("identifier") == "trigger_github_on_s3_ready"
-            or run.get("actionIdentifier") == "trigger_github_on_s3_ready"
+            if (run.get("action") or {}).get("identifier") == S3_AUTOMATION_ID
+            or run.get("actionIdentifier") == S3_AUTOMATION_ID
         ]
         if s3_runs:
             print("Recent S3 automation runs:")
@@ -346,7 +455,7 @@ def print_diagnostics(token: str, port_run_id: str) -> None:
                         summary["statusLabel"] = action_run.get("statusLabel") or run.get("statusLabel")
                 print(json.dumps(summary, indent=2))
             return
-    print("No recent automation runs matched trigger_github_on_s3_ready in last 10 action runs")
+    print(f"No recent automation runs matched {S3_AUTOMATION_ID} in last 10 action runs")
 
     recent = list_github_runs(os.environ.get("GITHUB_TOKEN", ""), event="workflow_dispatch") if os.environ.get("GITHUB_TOKEN") else []
     if recent:
@@ -488,9 +597,13 @@ def main() -> int:
 
     print_diagnostics(port_token, port_run_id)
 
-    automation_run = wait_for_s3_automation_run(port_token, started_at, timeout_sec=90)
+    automation_run = wait_for_s3_dispatch(port_token, started_at, timeout_sec=90)
     if not automation_run:
-        print("WARN: No Port automation run detected within 90s — continuing to poll GitHub", file=sys.stderr)
+        print(
+            f"WARN: No Port dispatch run detected for {S3_AUTOMATION_ID} or "
+            f"{S3_DISPATCH_WORKFLOW_ID} within 90s — continuing to poll GitHub",
+            file=sys.stderr,
+        )
 
     try:
         github_run = wait_for_github_run(github_token, git_ref, started_at)

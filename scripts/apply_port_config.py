@@ -181,6 +181,30 @@ def prepare_integration_automation_payload(payload: dict, variables: dict[str, s
     return payload
 
 
+def prepare_workflow_integration_node(config: dict, variables: dict[str, str]) -> dict:
+    """Hoist GitHub dispatch ref for INTEGRATION_ACTION nodes inside Port workflows."""
+    if config.get("type") != "INTEGRATION_ACTION":
+        return config
+    if config.get("integrationActionType") != "dispatch_workflow":
+        return config
+    wrapped = prepare_integration_automation_payload({"invocationMethod": config}, variables)
+    return wrapped["invocationMethod"]
+
+
+def prepare_workflow_payload(payload: dict, variables: dict[str, str]) -> dict:
+    nodes = payload.get("nodes")
+    if not isinstance(nodes, list):
+        return payload
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        config = node.get("config")
+        if not isinstance(config, dict):
+            continue
+        node["config"] = prepare_workflow_integration_node(config, variables)
+    return payload
+
+
 def prepare_action_payload(payload: dict, variables: dict[str, str]) -> dict:
     """Normalize GitHub backends for Port API (hosted GitHub rejects org/repo on type GITHUB)."""
     invocation = payload.get("invocationMethod")
@@ -340,6 +364,8 @@ def apply_json_files(
 
         if resource_label in {"action", "automation"}:
             payload = prepare_action_payload(payload, variables)
+        elif resource_label == "workflow":
+            payload = prepare_workflow_payload(payload, variables)
 
         identifier = payload.get("identifier")
         if not identifier:

@@ -15,6 +15,7 @@ from pathlib import Path
 S3_AUTOMATION_ID = "trigger_github_on_s3_ready"
 S3_AUTOMATION_FILE = "trigger-github-on-s3-ready.json"
 EXPECTED_REF = "{{ .event.diff.before.properties.gitRef }}"
+EXPECTED_PORT_RUN_ID = "{{ .event.diff.before.properties.portRunId }}"
 FORBIDDEN_REF = "{{ .event.diff.after.properties.gitRef }}"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -129,6 +130,28 @@ def load_repo_automation(repo_root: Path) -> dict:
     return prepare_action_payload(payload, variables)
 
 
+def extract_workflow_inputs(automation: dict) -> dict:
+    invocation = automation.get("invocationMethod") or {}
+    props = invocation.get("integrationActionExecutionProperties") or {}
+    inputs = props.get("workflowInputs") or {}
+    return inputs if isinstance(inputs, dict) else {}
+
+
+def verify_port_run_id(inputs: dict, *, label: str) -> list[str]:
+    errors: list[str] = []
+    port_run_id = inputs.get("port_run_id")
+    if not isinstance(port_run_id, str) or not port_run_id.strip():
+        errors.append(f"{label}: missing port_run_id in workflowInputs")
+        return errors
+    normalized = normalize_template(port_run_id)
+    if "diff.before.properties.portRunId" not in normalized and "context.entityIdentifier" not in normalized:
+        errors.append(
+            f"{label}: port_run_id is {port_run_id!r}, expected diff.before.properties.portRunId "
+            "or context.entityIdentifier"
+        )
+    return errors
+
+
 def verify_ref(ref: str | None, *, label: str) -> list[str]:
     errors: list[str] = []
     if not ref:
@@ -163,11 +186,14 @@ def main() -> int:
     repo_root = Path(args.repo_root)
     repo_automation = load_repo_automation(repo_root)
     repo_ref = extract_dispatch_ref(repo_automation)
+    repo_inputs = extract_workflow_inputs(repo_automation)
 
     print("=== S3 GitHub ref verification ===")
     print(f"Repo automation ref: {repo_ref!r}")
+    print(f"Repo automation port_run_id: {repo_inputs.get('port_run_id')!r}")
 
     errors = verify_ref(repo_ref, label="repo")
+    errors.extend(verify_port_run_id(repo_inputs, label="repo"))
     if not errors:
         print("OK   repo automation ref template is correct")
 
@@ -175,7 +201,9 @@ def main() -> int:
         token = get_port_token(args.api_url)
         live_automation = fetch_live_automation(args.api_url, token)
         live_ref = extract_dispatch_ref(live_automation)
+        live_inputs = extract_workflow_inputs(live_automation)
         print(f"Live automation ref: {live_ref!r}")
+        print(f"Live automation port_run_id: {live_inputs.get('port_run_id')!r}")
         if live_ref is None:
             invocation = live_automation.get("invocationMethod") or {}
             print(
@@ -184,6 +212,7 @@ def main() -> int:
                 file=sys.stderr,
             )
         errors.extend(verify_ref(live_ref, label="live Port"))
+        errors.extend(verify_port_run_id(live_inputs, label="live Port"))
         if not errors:
             print("OK   live Port automation matches expected ref template")
         elif live_ref != repo_ref:
