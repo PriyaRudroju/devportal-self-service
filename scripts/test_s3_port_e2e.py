@@ -194,16 +194,35 @@ def patch_entity_status(token: str, entity_id: str, status_value: str) -> None:
 
 
 def mark_entity_ready_external(token: str, entity_id: str) -> None:
-    """External Port API PATCH emits ENTITY_UPDATED for legacy automations."""
+    """External mark-ready emits ENTITY_UPDATED for legacy automations."""
     entity = fetch_entity(token, "s3Bucket", entity_id)
     props = entity.get("properties") or {}
     current = props.get("status")
     git_ref = props.get("gitRef")
     print(f"Entity before mark-ready: status={current} gitRef={git_ref}")
-    if current != "pending":
-        patch_entity_status(token, entity_id, "pending")
-        time.sleep(2)
-    patch_entity_status(token, entity_id, "ready")
+
+    api_gateway = os.environ.get("API_GATEWAY_URL", "").strip().rstrip("/")
+    if api_gateway:
+        url = f"{api_gateway}/s3/mark-ready"
+        status, body = api_request(
+            "POST",
+            url,
+            None,
+            {"entityId": entity_id},
+        )
+        if status not in {200, 201}:
+            raise RuntimeError(f"Lambda mark-ready failed: {status} {body}")
+        print(f"Lambda mark-ready: s3Bucket/{entity_id}")
+    else:
+        if current == "ready":
+            patch_entity_status(token, entity_id, "pending")
+            time.sleep(5)
+        elif current != "pending":
+            patch_entity_status(token, entity_id, "pending")
+            time.sleep(5)
+        patch_entity_status(token, entity_id, "ready")
+        print(f"External PATCH: s3Bucket/{entity_id} marked ready (was {current})")
+
     after = fetch_entity(token, "s3Bucket", entity_id)
     after_props = after.get("properties") or {}
     if not after_props.get("gitRef"):
@@ -211,7 +230,10 @@ def mark_entity_ready_external(token: str, entity_id: str) -> None:
             f"Entity {entity_id} has empty gitRef after mark-ready — "
             "automation will dispatch to wrong branch"
         )
-    print(f"External PATCH: s3Bucket/{entity_id} marked ready (was {current})")
+    if after_props.get("status") != "ready":
+        raise RuntimeError(
+            f"Entity {entity_id} status is {after_props.get('status')!r} after mark-ready, expected ready"
+        )
 
 
 def find_dispatch_ref(obj: object) -> str | None:

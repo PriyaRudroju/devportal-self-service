@@ -118,6 +118,7 @@ jobs:
           GIT_REF: ${{ github.event.inputs.git_ref || 'feature/s3-git-ref-test' }}
           BUCKET_NAME: ${{ github.event.inputs.bucket_name }}
           E2E_STARTED_AT: ${{ env.E2E_STARTED_AT }}
+          API_GATEWAY_URL: ${{ vars.API_GATEWAY_URL }}
         run: python scripts/test_s3_port_e2e.py
 
       - name: Summary

@@ -30,7 +30,7 @@
       "workflowInputs": {
         "bucket_name": "{{ .event.diff.before.properties.bucketName }}",
         "environment": "{{ .event.diff.before.properties.environment }}",
-        "port_run_id": "{{ .event.context.entityIdentifier }}"
+        "port_run_id": "{{ .event.diff.before.properties.portRunId }}"
       }
     }
   },

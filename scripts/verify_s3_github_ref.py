@@ -15,7 +15,7 @@ from pathlib import Path
 S3_AUTOMATION_ID = "trigger_github_on_s3_ready"
 S3_AUTOMATION_FILE = "trigger-github-on-s3-ready.json"
 EXPECTED_REF = "{{ .event.diff.before.properties.gitRef }}"
-EXPECTED_PORT_RUN_ID = "{{ .event.context.entityIdentifier }}"
+EXPECTED_PORT_RUN_ID = "{{ .event.diff.before.properties.portRunId }}"
 FORBIDDEN_REF = "{{ .event.diff.after.properties.gitRef }}"
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
