@@ -20,11 +20,11 @@
             "git_ref": {
               "title": "Git Branch",
               "type": "string",
-              "description": "Git branch to run the GitHub workflow on (e.g. dev or feature/my-test). Terraform still targets dev infrastructure.",
+              "description": "Git branch to run provision-s3-bucket.yml on (e.g. dev or feature/my-test). Leave empty to use dev. Invalid branches fail validation before GitHub is triggered.",
               "default": "{{GIT_REF_DEFAULT}}"
             }
           },
-          "required": ["bucket_name", "git_ref"]
+          "required": ["bucket_name"]
         }
       }
     },
@@ -50,6 +50,19 @@
       }
     },
     {
+      "identifier": "validate_git_ref",
+      "title": "Validate Git Branch (Lambda)",
+      "config": {
+        "type": "WEBHOOK",
+        "url": "{{API_GATEWAY_URL}}/s3/validate-git-ref",
+        "method": "POST",
+        "synchronized": true,
+        "body": {
+          "entityId": "{{ .workflowRun.identifier }}"
+        }
+      }
+    },
+    {
       "identifier": "mark_ready_entity",
       "title": "Mark Catalog Entity Ready (Lambda)",
       "config": {
@@ -70,6 +83,10 @@
     },
     {
       "sourceIdentifier": "create_pending_entity",
+      "targetIdentifier": "validate_git_ref"
+    },
+    {
+      "sourceIdentifier": "validate_git_ref",
       "targetIdentifier": "mark_ready_entity"
     }
   ]

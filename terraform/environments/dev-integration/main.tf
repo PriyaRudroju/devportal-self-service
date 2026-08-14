@@ -23,6 +23,10 @@ module "teams_approval" {
   port_client_id     = var.port_client_id
   port_client_secret = var.port_client_secret
   aws_region         = var.aws_region
+  github_token       = var.github_token
+  github_org         = var.github_org
+  github_repo        = var.github_repo
+  git_ref_default    = var.git_ref_default
 
   tags = {
     Project     = "devportal-self-service"

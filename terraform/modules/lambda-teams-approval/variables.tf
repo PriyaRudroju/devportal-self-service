@@ -39,6 +39,28 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "github_token" {
+  type        = string
+  description = "GitHub PAT for branch existence checks (repo read)"
+  sensitive   = true
+}
+
+variable "github_org" {
+  type        = string
+  description = "GitHub organization or user for branch validation"
+}
+
+variable "github_repo" {
+  type        = string
+  description = "GitHub repository name for branch validation"
+}
+
+variable "git_ref_default" {
+  type        = string
+  description = "Default Git branch when catalog gitRef is empty"
+  default     = "dev"
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to created resources"

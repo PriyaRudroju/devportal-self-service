@@ -47,11 +47,15 @@ resource "aws_lambda_function" "teams_approval" {
 
   environment {
     variables = {
-      TEAMS_WEBHOOK_URL      = var.teams_webhook_url
-      PORT_CLIENT_ID         = var.port_client_id
-      PORT_CLIENT_SECRET     = var.port_client_secret
-      PORT_API_URL           = var.port_api_url
-      API_GATEWAY_BASE_URL   = "https://${aws_apigatewayv2_api.teams_approval.id}.execute-api.${var.aws_region}.amazonaws.com"
+      TEAMS_WEBHOOK_URL    = var.teams_webhook_url
+      PORT_CLIENT_ID       = var.port_client_id
+      PORT_CLIENT_SECRET   = var.port_client_secret
+      PORT_API_URL         = var.port_api_url
+      API_GATEWAY_BASE_URL = "https://${aws_apigatewayv2_api.teams_approval.id}.execute-api.${var.aws_region}.amazonaws.com"
+      GITHUB_TOKEN         = var.github_token
+      GITHUB_ORG           = var.github_org
+      GITHUB_REPO          = var.github_repo
+      GIT_REF_DEFAULT      = var.git_ref_default
     }
   }
 
@@ -84,6 +88,12 @@ resource "aws_apigatewayv2_integration" "lambda" {
 resource "aws_apigatewayv2_route" "teams_notify" {
   api_id    = aws_apigatewayv2_api.teams_approval.id
   route_key = "POST /teams/notify"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "s3_validate_git_ref" {
+  api_id    = aws_apigatewayv2_api.teams_approval.id
+  route_key = "POST /s3/validate-git-ref"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 

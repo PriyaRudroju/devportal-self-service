@@ -14,7 +14,7 @@
       },
       "gitRef": {
         "type": "string",
-        "title": "Git Branch Ref"
+        "title": "GitHub dispatch branch"
       },
       "region": {
         "type": "string",

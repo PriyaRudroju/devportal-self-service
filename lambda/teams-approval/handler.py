@@ -61,6 +61,22 @@ def _get_port_access_token() -> str:
     return access_token
 
 
+def _get_port_entity(blueprint: str, identifier: str) -> dict:
+    port_api_url = _port_api_url()
+    token = _get_port_access_token()
+    request = urllib.request.Request(
+        f"{port_api_url}/v1/blueprints/{blueprint}/entities/{identifier}",
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        },
+        method="GET",
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        body = json.loads(response.read().decode("utf-8"))
+    return body.get("entity") or body
+
+
 def _patch_port_entity(blueprint: str, identifier: str, properties: dict) -> dict:
     port_api_url = _port_api_url()
     token = _get_port_access_token()
@@ -240,6 +256,89 @@ def _normalize_ec2_request(payload: dict) -> dict:
     }
 
 
+def _git_ref_default() -> str:
+    return _optional_env("GIT_REF_DEFAULT", "dev") or "dev"
+
+
+def _github_org() -> str:
+    return _env("GITHUB_ORG")
+
+
+def _github_repo() -> str:
+    return _env("GITHUB_REPO")
+
+
+def _resolve_git_ref(raw_ref: object) -> str:
+    if isinstance(raw_ref, str) and raw_ref.strip():
+        return raw_ref.strip()
+    return _git_ref_default()
+
+
+def github_branch_exists(git_ref: str) -> bool:
+    """Return True when the branch ref exists on GitHub."""
+    token = _env("GITHUB_TOKEN")
+    org = _github_org()
+    repo = _github_repo()
+    encoded_ref = urllib.parse.quote(git_ref, safe="")
+    url = f"https://api.github.com/repos/{org}/{repo}/branches/{encoded_ref}"
+    request = urllib.request.Request(
+        url,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            return response.status == 200
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:
+            return False
+        body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"GitHub branch lookup failed: {exc.code} {body}") from exc
+
+
+def handle_s3_validate_git_ref(event: dict) -> dict:
+    """Validate catalog gitRef exists on GitHub before mark-ready."""
+    payload = _parse_body(event)
+    entity_id = (payload.get("entityId") or payload.get("runId") or "").strip()
+    if not entity_id:
+        return _response(400, {"error": "entityId is required"})
+
+    blueprint = _optional_env("S3_PORT_BLUEPRINT", "s3Bucket")
+    entity = _get_port_entity(blueprint, entity_id)
+    props = entity.get("properties") or {}
+    git_ref = _resolve_git_ref(props.get("gitRef"))
+
+    if not github_branch_exists(git_ref):
+        return _response(
+            400,
+            {
+                "error": f"Branch '{git_ref}' not found on GitHub",
+                "gitRef": git_ref,
+                "repository": f"{_github_org()}/{_github_repo()}",
+            },
+        )
+
+    updates: dict[str, str] = {}
+    stored_ref = props.get("gitRef")
+    if not isinstance(stored_ref, str) or not stored_ref.strip() or stored_ref.strip() != git_ref:
+        updates["gitRef"] = git_ref
+    if updates:
+        _patch_port_entity(blueprint, entity_id, updates)
+
+    return _response(
+        200,
+        {
+            "message": "Git branch validated",
+            "entityId": entity_id,
+            "gitRef": git_ref,
+        },
+    )
+
+
 def handle_s3_mark_ready(event: dict) -> dict:
     """Mark S3 catalog entity ready via Port API (external call emits ENTITY_UPDATED)."""
     payload = _parse_body(event)
@@ -378,6 +477,9 @@ def lambda_handler(event, context):
 
         if method == "POST" and _route_matches(raw_path, "/teams/notify"):
             return handle_teams_notify(event)
+
+        if method == "POST" and _route_matches(raw_path, "/s3/validate-git-ref"):
+            return handle_s3_validate_git_ref(event)
 
         if method == "POST" and _route_matches(raw_path, "/s3/mark-ready"):
             return handle_s3_mark_ready(event)

@@ -1,7 +1,7 @@
 {
   "identifier": "trigger_github_on_s3_ready",
   "title": "Trigger GitHub When S3 Ready",
-  "description": "Legacy automation — dispatches S3 provisioning when a s3Bucket entity becomes ready",
+  "description": "When s3Bucket status changes pending to ready, dispatches provision-s3-bucket.yml on GitHub using catalog gitRef as the workflow ref (GitHub dispatch branch).",
   "trigger": {
     "type": "automation",
     "event": {

@@ -517,7 +517,69 @@ def wait_for_github_run(
     )
 
 
+def run_invalid_branch_e2e(port_token: str, github_token: str, started_at: str) -> int:
+    """Expect Port workflow to fail at Validate Git Branch; no GitHub dispatch."""
+    git_ref = os.environ.get("GIT_REF", "feature/does-not-exist-999")
+    bucket_name = f"devportal-invalid-branch-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+    print("=== S3 invalid branch E2E test ===")
+    print(f"bucket_name={bucket_name}")
+    print(f"git_ref={git_ref}")
+
+    port_run_id = trigger_port_workflow(port_token, bucket_name, git_ref)
+    port_run = wait_for_port_run(port_token, port_run_id)
+
+    if port_run.get("result") == "SUCCESS":
+        print("FAIL: Port workflow succeeded but invalid branch was expected to fail", file=sys.stderr)
+        return 1
+
+    node_runs = port_run.get("nodeRuns") or []
+    validate_nodes = [n for n in node_runs if n.get("identifier") == "validate_git_ref"]
+    if not validate_nodes:
+        print("FAIL: validate_git_ref node not found in Port run", file=sys.stderr)
+        return 1
+    validate_node = validate_nodes[0]
+    if validate_node.get("result") == "SUCCESS":
+        print("FAIL: validate_git_ref succeeded for invalid branch", file=sys.stderr)
+        return 1
+
+    entity = fetch_entity(port_token, "s3Bucket", port_run_id)
+    props = entity.get("properties") or {}
+    if props.get("status") != "pending":
+        print(
+            f"FAIL: entity status is {props.get('status')!r}, expected pending",
+            file=sys.stderr,
+        )
+        return 1
+
+    github_runs = list_github_runs(
+        github_token,
+        branch=git_ref,
+        created_after=started_at,
+        actor_login=PORT_DISPATCH_ACTOR,
+    )
+    if github_runs:
+        print(
+            f"FAIL: GitHub dispatch run appeared for invalid branch: {github_runs[0].get('html_url')}",
+            file=sys.stderr,
+        )
+        return 1
+
+    print("PASS invalid branch failed at Validate Git Branch; entity pending; no GitHub dispatch")
+    return 0
+
+
 def main() -> int:
+    if os.environ.get("S3_E2E_INVALID_BRANCH", "").strip() == "1":
+        github_token = os.environ.get("GITHUB_TOKEN", "").strip()
+        if not github_token:
+            raise RuntimeError("GITHUB_TOKEN is required")
+        started_at = (
+            os.environ.get("E2E_STARTED_AT", "").strip()
+            or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        )
+        port_token = get_port_token()
+        return run_invalid_branch_e2e(port_token, github_token, started_at)
+
     git_ref = os.environ.get("GIT_REF", "feature/s3-git-ref-test")
     bucket_env = os.environ.get("BUCKET_NAME", "").strip()
     bucket_name = bucket_env or f"devportal-s3-e2e-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
@@ -566,6 +628,9 @@ def main() -> int:
             entity_exists = False
 
         if entity_exists:
+            if os.environ.get("S3_E2E_INVALID_BRANCH", "").strip() == "1":
+                print("FAIL: Port workflow did not succeed as expected for invalid branch test", file=sys.stderr)
+                return 1
             print(
                 "WARN: Port workflow did not succeed — marking ready via external Port API "
                 "(Lambda /s3/mark-ready may not be deployed yet)",
