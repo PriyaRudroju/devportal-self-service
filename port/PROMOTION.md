@@ -31,36 +31,31 @@ Each branch contains **only** its Port deploy and validate workflows (no manual 
 ## Variable precedence
 
 1. Values in `port/environments/config.env`
-2. GitHub Environment variables override in CI (`API_GATEWAY_URL`, `TFC_WORKSPACE`, `FEATURE_GIT_REFS`, etc.)
+2. GitHub Environment variables override in CI (`API_GATEWAY_URL`, `TFC_WORKSPACE`, etc.)
 
-## Git Branch dropdown (`config.env`)
+## Git Branch field (`config.env`)
 
-Port self-service forms expose a **Git Branch** field (not AWS environment). Values are built at apply time:
+Port self-service forms expose a **Git Branch** free-text field (not AWS environment). The default placeholder is set at apply time:
 
 | Variable | Purpose |
 |---|---|
-| `GIT_REF_DEFAULT` | Stable branch shown first (e.g. `dev`) |
-| `FEATURE_GIT_REFS` | Comma-separated feature branches for testing (empty on stable `dev`) |
+| `GIT_REF_DEFAULT` | Default placeholder in the form (e.g. `dev`) |
 
-`scripts/apply_port_config.py` substitutes `{{GIT_REF_ENUM}}` into workflow/action JSON.
+Users type any branch name (e.g. `dev`, `feature/my-test`). No dropdown maintenance is required — deleted or merged feature branches do not linger in the Port UI.
 
-| Git branch | `GIT_REF_DEFAULT` | `FEATURE_GIT_REFS` | Port dropdown |
-|---|---|---|---|
-| `dev` | `dev` | empty | `dev` only |
-| `feature/*` (push `port/**`) | `dev` | CI injects current branch | `dev` + feature branch |
-| `qa` | `qa` | **must stay empty** | `qa` only |
-| `main` | `main` | **must stay empty** | `main` only |
-
-When promoting `dev → qa → main`, do **not** merge `FEATURE_GIT_REFS` values into qa/main `config.env`.
+| Git branch | `GIT_REF_DEFAULT` | Port form default |
+|---|---|---|
+| `dev` | `dev` | `dev` |
+| `qa` | `qa` | `qa` |
+| `main` | `main` | `main` |
 
 ### Feature branch testing workflow
 
 1. `git checkout -b feature/my-test dev`
-2. Edit `port/**` if needed; push to origin
-3. **Deploy Port Config** runs on `feature/**` and injects `FEATURE_GIT_REFS=feature/my-test`
-4. Port form shows **Git Branch**: `dev` (stable) and `feature/my-test` (testing — see field description)
-5. Selecting `dev` dispatches GitHub on `dev`; selecting the feature branch dispatches on that ref. Terraform still uses dev infrastructure.
-6. After merge to `dev`, push `dev` with `FEATURE_GIT_REFS` empty to reset the dropdown.
+2. Edit `port/**` or workflow YAML if needed; push to origin
+3. In Port, submit the form with **Git Branch** set to `feature/my-test` (or leave default `dev`)
+4. GitHub dispatch runs on the branch you entered; Terraform still uses dev infrastructure
+5. After merge or branch delete, nothing to clean up in Port — the field is free-text
 
 ## Day-to-day: change Port config in dev
 
@@ -114,9 +109,9 @@ See [`docs/GITHUB_SETUP.md`](../docs/GITHUB_SETUP.md) for branch protection and 
 | `--plan` fails on `REPLACE_` | Set real values in `config.env` or export env vars before apply |
 | `PORT_ENV` mismatch | `--env` must match `PORT_ENV` in `config.env` on this branch |
 | Deploy workflow skips | Push must touch `port/**` on `dev` or `feature/**`, or run workflow manually |
-| Feature branch missing in Port dropdown | Push `port/**` on the feature branch so Deploy Port Config injects `FEATURE_GIT_REFS` | 
 | Wrong API URL in Port | Check GitHub Environment variable for that env |
 | EC2 workflow runs wrong branch | Automation `ref` must match branch (`dev`, `qa`, `main`) |
 | S3 workflow runs on **`main`** instead of selected Git Branch | S3 automation must read `gitRef` from **`diff.before.properties.gitRef`** (not `diff.after`); re-apply Port config. Run `python scripts/verify_s3_github_ref.py --check-live` |
 | S3 GitHub dispatch never starts | Mark-ready must use **external** Port API (Lambda `POST /s3/mark-ready` or E2E PATCH) so `ENTITY_UPDATED` fires; workflow-internal PATCH does not trigger legacy automations. Ensure `provision_s3_after_ready` workflow is applied in legacy mode |
+| Invalid Git branch in form | Branch not on GitHub | Workflow fails at **Validate Git Branch (Lambda)**; entity stays `pending`; no GitHub run |
 | 409 on create | Normal — script retries with PUT/PATCH update |
