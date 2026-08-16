@@ -2,7 +2,7 @@
   "identifier": "provision_s3_request",
   "title": "Provision S3 Bucket",
   "icon": "Bucket",
-  "description": "Request S3 bucket provisioning — creates catalog entity, marks ready, then dispatches GitHub on the form Git Branch",
+  "description": "Request S3 bucket provisioning — creates catalog entity, dispatches GitHub on the form Git Branch, then marks ready",
   "category": "Infra",
   "nodes": [
     {
@@ -97,11 +97,11 @@
     },
     {
       "sourceIdentifier": "create_pending_entity",
-      "targetIdentifier": "mark_ready_entity"
+      "targetIdentifier": "dispatch_github"
     },
     {
-      "sourceIdentifier": "mark_ready_entity",
-      "targetIdentifier": "dispatch_github"
+      "sourceIdentifier": "dispatch_github",
+      "targetIdentifier": "mark_ready_entity"
     }
   ]
 }
