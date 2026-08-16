@@ -29,6 +29,7 @@ class TestHandleS3ValidateGitRef(unittest.TestCase):
         result = handler.handle_s3_validate_git_ref({"body": "{}"})
         self.assertEqual(result["statusCode"], 400)
 
+    @patch.object(handler, "_patch_port_entity")
     @patch.object(handler, "github_branch_exists", return_value=False)
     @patch.object(handler, "_get_port_entity")
     @patch.dict(
@@ -40,12 +41,14 @@ class TestHandleS3ValidateGitRef(unittest.TestCase):
         },
         clear=False,
     )
-    def test_invalid_branch_returns_400(self, mock_get_entity, _mock_exists) -> None:
+    def test_invalid_branch_returns_400(self, mock_get_entity, _mock_exists, mock_patch) -> None:
         mock_get_entity.return_value = {"properties": {"gitRef": "feature/missing"}}
         result = handler.handle_s3_validate_git_ref({"body": '{"entityId":"run-1"}'})
         self.assertEqual(result["statusCode"], 400)
         body = __import__("json").loads(result["body"])
-        self.assertIn("not found", body["error"])
+        self.assertIn("is not present in Git", body["error"])
+        mock_get_entity.assert_called_once()
+        mock_patch.assert_not_called()
 
     @patch.object(handler, "_patch_port_entity")
     @patch.object(handler, "github_branch_exists", return_value=True)
@@ -64,6 +67,17 @@ class TestHandleS3ValidateGitRef(unittest.TestCase):
         result = handler.handle_s3_validate_git_ref({"body": '{"entityId":"run-1"}'})
         self.assertEqual(result["statusCode"], 200)
         mock_patch.assert_not_called()
+
+
+class TestExtractEntityId(unittest.TestCase):
+    def test_nested_port_payload(self) -> None:
+        self.assertEqual(
+            handler._extract_entity_id({"payload": {"entityId": "wfr_1"}}),
+            "wfr_1",
+        )
+
+    def test_run_id_fallback(self) -> None:
+        self.assertEqual(handler._extract_entity_id({"runId": "wfr_2"}), "wfr_2")
 
 
 if __name__ == "__main__":

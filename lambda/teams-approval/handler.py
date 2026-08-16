@@ -216,6 +216,23 @@ def _parse_body(event: dict) -> dict:
     return body or {}
 
 
+def _extract_entity_id(payload: dict) -> str:
+    """Accept Port webhook body, nested payload, or workflow context ids."""
+    nested = payload.get("payload") if isinstance(payload.get("payload"), dict) else {}
+    context = payload.get("context") if isinstance(payload.get("context"), dict) else {}
+    for value in (
+        payload.get("entityId"),
+        payload.get("runId"),
+        nested.get("entityId"),
+        nested.get("runId"),
+        context.get("workflowRunId"),
+        context.get("runId"),
+    ):
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
 def _api_base_url(event: dict) -> str:
     env_url = _optional_env("API_GATEWAY_BASE_URL")
     if env_url:
@@ -303,7 +320,7 @@ def github_branch_exists(git_ref: str) -> bool:
 def handle_s3_validate_git_ref(event: dict) -> dict:
     """Validate catalog gitRef exists on GitHub before mark-ready."""
     payload = _parse_body(event)
-    entity_id = (payload.get("entityId") or payload.get("runId") or "").strip()
+    entity_id = _extract_entity_id(payload)
     if not entity_id:
         return _response(400, {"error": "entityId is required"})
 
@@ -316,7 +333,7 @@ def handle_s3_validate_git_ref(event: dict) -> dict:
         return _response(
             400,
             {
-                "error": f"Branch '{git_ref}' not found on GitHub",
+                "error": f"Branch '{git_ref}' is not present in Git",
                 "gitRef": git_ref,
                 "repository": f"{_github_org()}/{_github_repo()}",
             },
@@ -342,7 +359,7 @@ def handle_s3_validate_git_ref(event: dict) -> dict:
 def handle_s3_mark_ready(event: dict) -> dict:
     """Mark S3 catalog entity ready via Port API (external call emits ENTITY_UPDATED)."""
     payload = _parse_body(event)
-    entity_id = (payload.get("entityId") or payload.get("runId") or "").strip()
+    entity_id = _extract_entity_id(payload)
     if not entity_id:
         return _response(400, {"error": "entityId is required"})
 

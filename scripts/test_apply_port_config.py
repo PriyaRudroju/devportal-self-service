@@ -27,6 +27,11 @@ class TestPortRuntimeTemplate(unittest.TestCase):
             is_port_runtime_template("{{ .event.diff.before.properties.gitRef }}")
         )
 
+    def test_detects_outputs_template(self) -> None:
+        self.assertTrue(
+            is_port_runtime_template("{{ .outputs.trigger.git_ref }}")
+        )
+
     def test_rejects_static_placeholder(self) -> None:
         self.assertFalse(is_port_runtime_template("{{GIT_REF_DEFAULT}}"))
         self.assertFalse(is_port_runtime_template("dev"))
@@ -52,6 +57,7 @@ class TestS3AutomationPayload(unittest.TestCase):
             props["ref"],
             "{{ .event.diff.before.properties.gitRef }}",
         )
+        self.assertFalse(result.get("publish"))
 
     def test_ref_not_in_workflow_inputs(self) -> None:
         result = prepare_action_payload(self.payload, self.variables)
@@ -127,6 +133,40 @@ class TestPrepareWorkflowPayload(unittest.TestCase):
         props = result["nodes"][0]["config"]["integrationActionExecutionProperties"]
         self.assertEqual(props["ref"], "{{ .outputs.trigger.diff.before.properties.gitRef }}")
         self.assertNotIn("ref", props["workflowInputs"])
+
+
+class TestS3RequestWorkflowPayload(unittest.TestCase):
+    def setUp(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        workflow_path = (
+            repo_root / "port" / "environments" / "workflows" / "provision-s3-request.json"
+        )
+        config_path = repo_root / "port" / "environments" / "config.env"
+        from apply_port_config import build_variables
+
+        self.variables = build_variables(config_path)
+        raw = workflow_path.read_text(encoding="utf-8")
+        self.payload = json.loads(substitute(raw, self.variables))
+
+    def _dispatch_props(self, payload: dict) -> dict:
+        for node in payload["nodes"]:
+            if node.get("identifier") == "dispatch_github":
+                return node["config"]["integrationActionExecutionProperties"]
+        self.fail("dispatch_github node not found")
+
+    def test_preserves_validated_git_ref(self) -> None:
+        result = prepare_workflow_payload(self.payload, self.variables)
+        props = self._dispatch_props(result)
+        self.assertEqual(props["ref"], "{{ .outputs.trigger.git_ref }}")
+        self.assertNotIn("ref", props.get("workflowInputs", {}))
+
+    def test_workflow_inputs_do_not_include_ref(self) -> None:
+        result = prepare_workflow_payload(self.payload, self.variables)
+        inputs = self._dispatch_props(result)["workflowInputs"]
+        self.assertIn("bucket_name", inputs)
+        self.assertIn("environment", inputs)
+        self.assertIn("port_run_id", inputs)
+        self.assertNotIn("ref", inputs)
 
 
 if __name__ == "__main__":

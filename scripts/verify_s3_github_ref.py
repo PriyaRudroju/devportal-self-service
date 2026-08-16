@@ -14,7 +14,10 @@ from pathlib import Path
 
 S3_AUTOMATION_ID = "trigger_github_on_s3_ready"
 S3_AUTOMATION_FILE = "trigger-github-on-s3-ready.json"
+S3_REQUEST_WORKFLOW_ID = "provision_s3_request"
+S3_REQUEST_WORKFLOW_FILE = "provision-s3-request.json"
 EXPECTED_REF = "{{ .event.diff.before.properties.gitRef }}"
+EXPECTED_WORKFLOW_REF = "{{ .outputs.trigger.git_ref }}"
 EXPECTED_PORT_RUN_ID = "{{ .event.diff.before.properties.portRunId }}"
 FORBIDDEN_REF = "{{ .event.diff.after.properties.gitRef }}"
 
@@ -22,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from apply_port_config import (  # noqa: E402
     build_variables,
     prepare_action_payload,
+    prepare_workflow_payload,
     substitute,
 )
 
@@ -130,6 +134,36 @@ def load_repo_automation(repo_root: Path) -> dict:
     return prepare_action_payload(payload, variables)
 
 
+def load_repo_request_workflow(repo_root: Path) -> dict:
+    config_path = repo_root / "port" / "environments" / "config.env"
+    variables = build_variables(config_path)
+    workflow_path = repo_root / "port" / "environments" / "workflows" / S3_REQUEST_WORKFLOW_FILE
+    raw = workflow_path.read_text(encoding="utf-8")
+    rendered = substitute(raw, variables)
+    payload = json.loads(rendered)
+    return prepare_workflow_payload(payload, variables)
+
+
+def find_dispatch_github_node(workflow: dict) -> dict | None:
+    for node in workflow.get("nodes") or []:
+        if isinstance(node, dict) and node.get("identifier") == "dispatch_github":
+            return node
+    return None
+
+
+def extract_workflow_dispatch_props(workflow: dict) -> tuple[str | None, dict]:
+    node = find_dispatch_github_node(workflow)
+    if not node:
+        return None, {}
+    config = node.get("config") or {}
+    props = config.get("integrationActionExecutionProperties") or {}
+    ref = props.get("ref")
+    if not (isinstance(ref, str) and ref.strip()):
+        ref = find_gitref_template(node)
+    inputs = props.get("workflowInputs") or {}
+    return ref, inputs if isinstance(inputs, dict) else {}
+
+
 def extract_workflow_inputs(automation: dict) -> dict:
     invocation = automation.get("invocationMethod") or {}
     props = invocation.get("integrationActionExecutionProperties") or {}
@@ -169,6 +203,28 @@ def verify_ref(ref: str | None, *, label: str) -> list[str]:
     return errors
 
 
+def verify_request_workflow_dispatch(ref: str | None, inputs: dict, *, label: str) -> list[str]:
+    errors: list[str] = []
+    if not ref:
+        errors.append(f"{label}: missing top-level ref on dispatch_github")
+        return errors
+    if "ref" in inputs:
+        errors.append(f"{label}: ref must not be inside workflowInputs")
+    normalized = normalize_template(ref)
+    if "outputs.trigger.git_ref" not in normalized:
+        errors.append(
+            f"{label}: dispatch_github ref is {ref!r}, expected {EXPECTED_WORKFLOW_REF}"
+        )
+    if ref_uses_diff_after(ref):
+        errors.append(
+            f"{label}: dispatch_github ref uses diff.after.properties.gitRef"
+        )
+    port_run_id = inputs.get("port_run_id")
+    if not isinstance(port_run_id, str) or not port_run_id.strip():
+        errors.append(f"{label}: missing port_run_id in dispatch_github workflowInputs")
+    return errors
+
+
 def fetch_live_automation(api_url: str, token: str) -> dict:
     status, body = api_get(f"{api_url.rstrip('/')}/v1/actions/{S3_AUTOMATION_ID}", token)
     if status != 200 or not isinstance(body, dict):
@@ -176,10 +232,17 @@ def fetch_live_automation(api_url: str, token: str) -> dict:
     return body.get("action") or body
 
 
+def fetch_live_request_workflow(api_url: str, token: str) -> dict:
+    status, body = api_get(f"{api_url.rstrip('/')}/v1/workflows/{S3_REQUEST_WORKFLOW_ID}", token)
+    if status != 200 or not isinstance(body, dict):
+        raise RuntimeError(f"Failed to fetch live request workflow: {status} {body}")
+    return body.get("workflow") or body
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Verify S3 automation GitHub dispatch branch ref")
+    parser = argparse.ArgumentParser(description="Verify S3 GitHub dispatch branch ref")
     parser.add_argument("--repo-root", default=str(Path(__file__).resolve().parents[1]))
-    parser.add_argument("--check-live", action="store_true", help="Fetch automation from Port API")
+    parser.add_argument("--check-live", action="store_true", help="Fetch automation and workflow from Port API")
     parser.add_argument("--api-url", default=os.environ.get("PORT_API_URL", "https://api.port.io"))
     args = parser.parse_args()
 
@@ -187,15 +250,21 @@ def main() -> int:
     repo_automation = load_repo_automation(repo_root)
     repo_ref = extract_dispatch_ref(repo_automation)
     repo_inputs = extract_workflow_inputs(repo_automation)
+    repo_workflow = load_repo_request_workflow(repo_root)
+    repo_wf_ref, repo_wf_inputs = extract_workflow_dispatch_props(repo_workflow)
 
     print("=== S3 GitHub ref verification ===")
     print(f"Repo automation ref: {repo_ref!r}")
     print(f"Repo automation port_run_id: {repo_inputs.get('port_run_id')!r}")
+    print(f"Repo request workflow dispatch_github ref: {repo_wf_ref!r}")
 
-    errors = verify_ref(repo_ref, label="repo")
-    errors.extend(verify_port_run_id(repo_inputs, label="repo"))
+    errors = verify_ref(repo_ref, label="repo automation")
+    errors.extend(verify_port_run_id(repo_inputs, label="repo automation"))
+    errors.extend(
+        verify_request_workflow_dispatch(repo_wf_ref, repo_wf_inputs, label="repo request workflow")
+    )
     if not errors:
-        print("OK   repo automation ref template is correct")
+        print("OK   repo automation and request workflow dispatch refs are correct")
 
     if args.check_live:
         token = get_port_token(args.api_url)
@@ -211,13 +280,23 @@ def main() -> int:
                 json.dumps(invocation, indent=2),
                 file=sys.stderr,
             )
-        errors.extend(verify_ref(live_ref, label="live Port"))
-        errors.extend(verify_port_run_id(live_inputs, label="live Port"))
+        errors.extend(verify_ref(live_ref, label="live Port automation"))
+        errors.extend(verify_port_run_id(live_inputs, label="live Port automation"))
+
+        live_workflow = fetch_live_request_workflow(args.api_url, token)
+        live_wf_ref, live_wf_inputs = extract_workflow_dispatch_props(live_workflow)
+        print(f"Live request workflow dispatch_github ref: {live_wf_ref!r}")
+        errors.extend(
+            verify_request_workflow_dispatch(
+                live_wf_ref, live_wf_inputs, label="live Port request workflow"
+            )
+        )
         if not errors:
-            print("OK   live Port automation matches expected ref template")
-        elif live_ref != repo_ref:
+            print("OK   live Port automation and request workflow match expected ref templates")
+        elif live_ref != repo_ref or live_wf_ref != repo_wf_ref:
             print(
-                "HINT: re-apply Port config: python scripts/apply_port_config.py --env dev --resources automations",
+                "HINT: re-apply Port config: python scripts/apply_port_config.py --env dev "
+                "--resources automations,workflows",
                 file=sys.stderr,
             )
 
@@ -226,7 +305,10 @@ def main() -> int:
             print(f"FAIL {err}", file=sys.stderr)
         return 1
 
-    print("PASS S3 automation will dispatch provision-s3-bucket.yml using diff.before.properties.gitRef")
+    print(
+        "PASS S3 request workflow Trigger GitHub node dispatches provision-s3-bucket.yml "
+        "using trigger.git_ref"
+    )
     return 0
 
 

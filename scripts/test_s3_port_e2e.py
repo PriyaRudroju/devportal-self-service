@@ -517,6 +517,13 @@ def wait_for_github_run(
     )
 
 
+def dispatch_github_node(port_run: dict) -> dict | None:
+    for node in port_run.get("nodeRuns") or []:
+        if node.get("identifier") == "dispatch_github":
+            return node
+    return None
+
+
 def run_invalid_branch_e2e(port_token: str, github_token: str, started_at: str) -> int:
     """Expect Port workflow to fail at Validate Git Branch; no GitHub dispatch."""
     git_ref = os.environ.get("GIT_REF", "feature/does-not-exist-999")
@@ -540,6 +547,11 @@ def run_invalid_branch_e2e(port_token: str, github_token: str, started_at: str) 
     validate_node = validate_nodes[0]
     if validate_node.get("result") == "SUCCESS":
         print("FAIL: validate_git_ref succeeded for invalid branch", file=sys.stderr)
+        return 1
+
+    dispatch_node = dispatch_github_node(port_run)
+    if dispatch_node and dispatch_node.get("result") == "SUCCESS":
+        print("FAIL: Trigger GitHub ran despite invalid branch", file=sys.stderr)
         return 1
 
     entity = fetch_entity(port_token, "s3Bucket", port_run_id)
@@ -598,7 +610,7 @@ def main() -> int:
 
     port_token = get_port_token()
     live_automation = fetch_live_s3_automation(port_token)
-    print(f"Live Port automation: {json.dumps(live_automation, indent=2)}")
+    print(f"Live Port automation (unpublished backup): {json.dumps(live_automation, indent=2)}")
 
     port_run_id = trigger_port_workflow(port_token, bucket_name, git_ref)
     port_run = wait_for_port_run(port_token, port_run_id)
@@ -620,57 +632,36 @@ def main() -> int:
             n for n in node_runs
             if n.get("result") not in {None, "SUCCESS"} or n.get("status") in {"FAILED", "CANCELLED"}
         ]
-        entity_exists = False
-        try:
-            entity = fetch_entity(port_token, "s3Bucket", port_run_id)
-            entity_exists = True
-        except Exception:
-            entity_exists = False
-
-        if entity_exists:
-            if os.environ.get("S3_E2E_INVALID_BRANCH", "").strip() == "1":
-                print("FAIL: Port workflow did not succeed as expected for invalid branch test", file=sys.stderr)
-                return 1
+        print("FAIL: Port workflow did not succeed:", file=sys.stderr)
+        for node in failed_nodes or node_runs:
             print(
-                "WARN: Port workflow did not succeed — marking ready via external Port API "
-                "(Lambda /s3/mark-ready may not be deployed yet)",
+                json.dumps(
+                    {
+                        "identifier": node.get("identifier"),
+                        "title": node.get("title"),
+                        "status": node.get("status"),
+                        "result": node.get("result"),
+                        "error": node.get("error"),
+                    },
+                    indent=2,
+                ),
                 file=sys.stderr,
             )
-            mark_entity_ready_external(port_token, port_run_id)
-        elif failed_nodes:
-            print("FAIL: Port workflow node(s) failed:", file=sys.stderr)
-            for node in failed_nodes:
-                print(
-                    json.dumps(
-                        {
-                            "identifier": node.get("identifier"),
-                            "title": node.get("title"),
-                            "status": node.get("status"),
-                            "result": node.get("result"),
-                            "error": node.get("error"),
-                        },
-                        indent=2,
-                    ),
-                    file=sys.stderr,
-                )
-            return 1
-        else:
-            print("FAIL: Port workflow did not succeed and entity was not created", file=sys.stderr)
-            return 1
-    else:
-        # Workflow mark-ready (Lambda) may not emit ENTITY_UPDATED; always retrigger externally.
-        print("Port workflow succeeded — ensuring automation via external Port API PATCH")
-        mark_entity_ready_external(port_token, port_run_id)
+        return 1
+
+    dispatch_node = dispatch_github_node(port_run)
+    if not dispatch_node:
+        print("FAIL: dispatch_github (Trigger GitHub) node not found in Port run", file=sys.stderr)
+        return 1
+    if dispatch_node.get("result") != "SUCCESS":
+        print(
+            f"FAIL: Trigger GitHub node did not succeed: {json.dumps(dispatch_node, indent=2)}",
+            file=sys.stderr,
+        )
+        return 1
+    print(f"Trigger GitHub node succeeded: {json.dumps(dispatch_node, indent=2)}")
 
     print_diagnostics(port_token, port_run_id)
-
-    automation_run = wait_for_s3_dispatch(port_token, started_at, timeout_sec=90)
-    if not automation_run:
-        print_diagnostics(port_token, port_run_id)
-        raise RuntimeError(
-            f"No Port dispatch run detected for {S3_AUTOMATION_ID} or "
-            f"{S3_DISPATCH_WORKFLOW_ID} within 90s"
-        )
 
     try:
         github_run = wait_for_github_run(github_token, git_ref, started_at)
@@ -698,7 +689,7 @@ def main() -> int:
     if github_run.get("status") == "completed" and github_run.get("conclusion") not in {"success", None}:
         print("WARN: GitHub workflow completed but Terraform may have failed — dispatch path succeeded")
 
-    print("\nPASS: Port workflow succeeded and GitHub Provision S3 Bucket run started on correct branch")
+    print("\nPASS: Port workflow Trigger GitHub succeeded and GitHub Provision S3 Bucket ran on the correct branch")
     return 0
 
 

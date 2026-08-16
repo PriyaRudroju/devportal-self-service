@@ -1,7 +1,7 @@
 {
   "identifier": "trigger_github_on_s3_ready",
   "title": "Trigger GitHub When S3 Ready",
-  "description": "When s3Bucket status changes pending to ready, dispatches provision-s3-bucket.yml on GitHub using catalog gitRef as the workflow ref (GitHub dispatch branch).",
+  "description": "Unpublished backup. Form path dispatches GitHub from provision_s3_request Trigger GitHub node. Keep ref on catalog gitRef if re-enabled.",
   "trigger": {
     "type": "automation",
     "event": {
@@ -34,5 +34,5 @@
       }
     }
   },
-  "publish": true
+  "publish": false
 }
