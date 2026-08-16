@@ -20,11 +20,11 @@
             "git_ref": {
               "title": "Git Branch",
               "type": "string",
-              "description": "Git branch to run provision-s3-bucket.yml on (e.g. dev or feature/my-test). Leave empty to use the environment default. A branch that is not present in Git fails at Trigger GitHub.",
+              "description": "Git branch to run provision-s3-bucket.yml on (e.g. dev or feature/my-test). Defaults to {{GIT_REF_DEFAULT}}. A branch that is not present in Git fails at Trigger GitHub.",
               "default": "{{GIT_REF_DEFAULT}}"
             }
           },
-          "required": ["bucket_name"]
+          "required": ["bucket_name", "git_ref"]
         }
       }
     },
@@ -61,8 +61,7 @@
           "Content-Type": "application/json"
         },
         "body": {
-          "entityId": "{{ .workflowRun.identifier }}",
-          "runId": "{{ .run.id }}"
+          "entityId": "{{ .workflowRun.identifier }}"
         }
       }
     },
@@ -70,16 +69,19 @@
       "identifier": "dispatch_github",
       "title": "Trigger GitHub",
       "config": {
-        "type": "INTEGRATION_ACTION",
-        "installationId": "{{GITHUB_INSTALLATION_ID}}",
-        "integrationActionType": "dispatch_workflow",
-        "integrationActionExecutionProperties": {
-          "org": "{{GITHUB_ORG}}",
-          "repo": "{{GITHUB_REPO}}",
-          "workflow": "provision-s3-bucket.yml",
+        "type": "WEBHOOK",
+        "url": "https://api.github.com/repos/{{GITHUB_ORG}}/{{GITHUB_REPO}}/actions/workflows/provision-s3-bucket.yml/dispatches",
+        "method": "POST",
+        "synchronized": true,
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {{ .secrets[\"GITHUB_DISPATCH_TOKEN\"] }}"
+        },
+        "body": {
           "ref": "{{ .outputs.trigger.git_ref }}",
-          "reportWorkflowStatus": true,
-          "workflowInputs": {
+          "inputs": {
             "bucket_name": "{{ .outputs.trigger.bucket_name }}",
             "environment": "dev",
             "port_run_id": "{{ .workflowRun.identifier }}"

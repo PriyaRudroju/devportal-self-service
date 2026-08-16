@@ -151,17 +151,26 @@ def find_dispatch_github_node(workflow: dict) -> dict | None:
     return None
 
 
-def extract_workflow_dispatch_props(workflow: dict) -> tuple[str | None, dict]:
+def extract_workflow_dispatch_props(workflow: dict) -> tuple[str | None, dict, str]:
+    """Return (ref, workflow inputs, url) for the request workflow dispatch node.
+
+    Legacy Port orgs reject GitHub INTEGRATION_ACTION nodes inside workflows, so the
+    node dispatches through the GitHub REST API with a WEBHOOK instead.
+    """
     node = find_dispatch_github_node(workflow)
     if not node:
-        return None, {}
+        return None, {}, ""
     config = node.get("config") or {}
+    url = config.get("url") or ""
+
+    body = config.get("body") if isinstance(config.get("body"), dict) else {}
+    if body:
+        inputs = body.get("inputs") if isinstance(body.get("inputs"), dict) else {}
+        return body.get("ref"), inputs, url
+
     props = config.get("integrationActionExecutionProperties") or {}
-    ref = props.get("ref")
-    if not (isinstance(ref, str) and ref.strip()):
-        ref = find_gitref_template(node)
     inputs = props.get("workflowInputs") or {}
-    return ref, inputs if isinstance(inputs, dict) else {}
+    return props.get("ref"), inputs if isinstance(inputs, dict) else {}, url
 
 
 def extract_workflow_inputs(automation: dict) -> dict:
@@ -203,25 +212,35 @@ def verify_ref(ref: str | None, *, label: str) -> list[str]:
     return errors
 
 
-def verify_request_workflow_dispatch(ref: str | None, inputs: dict, *, label: str) -> list[str]:
+def verify_request_workflow_dispatch(
+    ref: str | None,
+    inputs: dict,
+    url: str,
+    *,
+    label: str,
+) -> list[str]:
     errors: list[str] = []
     if not ref:
-        errors.append(f"{label}: missing top-level ref on dispatch_github")
+        errors.append(f"{label}: missing dispatch ref on dispatch_github")
         return errors
     if "ref" in inputs:
-        errors.append(f"{label}: ref must not be inside workflowInputs")
+        errors.append(f"{label}: ref must not be one of the GitHub workflow inputs")
     normalized = normalize_template(ref)
     if "outputs.trigger.git_ref" not in normalized:
         errors.append(
             f"{label}: dispatch_github ref is {ref!r}, expected {EXPECTED_WORKFLOW_REF}"
         )
-    if ref_uses_diff_after(ref):
-        errors.append(
-            f"{label}: dispatch_github ref uses diff.after.properties.gitRef"
-        )
     port_run_id = inputs.get("port_run_id")
     if not isinstance(port_run_id, str) or not port_run_id.strip():
-        errors.append(f"{label}: missing port_run_id in dispatch_github workflowInputs")
+        errors.append(f"{label}: missing port_run_id in dispatch_github inputs")
+    if url and "/actions/workflows/provision-s3-bucket.yml/dispatches" not in url:
+        errors.append(
+            f"{label}: dispatch_github url is {url!r}, expected the provision-s3-bucket.yml dispatches endpoint"
+        )
+    if "{{" in url and ".outputs." in url:
+        errors.append(
+            f"{label}: dispatch_github url contains a runtime template; Port rejects templated webhook URLs at apply time"
+        )
     return errors
 
 
@@ -251,7 +270,7 @@ def main() -> int:
     repo_ref = extract_dispatch_ref(repo_automation)
     repo_inputs = extract_workflow_inputs(repo_automation)
     repo_workflow = load_repo_request_workflow(repo_root)
-    repo_wf_ref, repo_wf_inputs = extract_workflow_dispatch_props(repo_workflow)
+    repo_wf_ref, repo_wf_inputs, repo_wf_url = extract_workflow_dispatch_props(repo_workflow)
 
     print("=== S3 GitHub ref verification ===")
     print(f"Repo automation ref: {repo_ref!r}")
@@ -261,7 +280,9 @@ def main() -> int:
     errors = verify_ref(repo_ref, label="repo automation")
     errors.extend(verify_port_run_id(repo_inputs, label="repo automation"))
     errors.extend(
-        verify_request_workflow_dispatch(repo_wf_ref, repo_wf_inputs, label="repo request workflow")
+        verify_request_workflow_dispatch(
+            repo_wf_ref, repo_wf_inputs, repo_wf_url, label="repo request workflow"
+        )
     )
     if not errors:
         print("OK   repo automation and request workflow dispatch refs are correct")
@@ -284,11 +305,11 @@ def main() -> int:
         errors.extend(verify_port_run_id(live_inputs, label="live Port automation"))
 
         live_workflow = fetch_live_request_workflow(args.api_url, token)
-        live_wf_ref, live_wf_inputs = extract_workflow_dispatch_props(live_workflow)
+        live_wf_ref, live_wf_inputs, live_wf_url = extract_workflow_dispatch_props(live_workflow)
         print(f"Live request workflow dispatch_github ref: {live_wf_ref!r}")
         errors.extend(
             verify_request_workflow_dispatch(
-                live_wf_ref, live_wf_inputs, label="live Port request workflow"
+                live_wf_ref, live_wf_inputs, live_wf_url, label="live Port request workflow"
             )
         )
         if not errors:

@@ -148,25 +148,32 @@ class TestS3RequestWorkflowPayload(unittest.TestCase):
         raw = workflow_path.read_text(encoding="utf-8")
         self.payload = json.loads(substitute(raw, self.variables))
 
-    def _dispatch_props(self, payload: dict) -> dict:
+    def _dispatch_config(self, payload: dict) -> dict:
         for node in payload["nodes"]:
             if node.get("identifier") == "dispatch_github":
-                return node["config"]["integrationActionExecutionProperties"]
+                return node["config"]
         self.fail("dispatch_github node not found")
 
-    def test_preserves_validated_git_ref(self) -> None:
+    def test_dispatches_on_form_git_ref(self) -> None:
         result = prepare_workflow_payload(self.payload, self.variables)
-        props = self._dispatch_props(result)
-        self.assertEqual(props["ref"], "{{ .outputs.trigger.git_ref }}")
-        self.assertNotIn("ref", props.get("workflowInputs", {}))
+        body = self._dispatch_config(result)["body"]
+        self.assertEqual(body["ref"], "{{ .outputs.trigger.git_ref }}")
+        self.assertNotIn("ref", body["inputs"])
 
-    def test_workflow_inputs_do_not_include_ref(self) -> None:
+    def test_dispatch_inputs_match_github_workflow(self) -> None:
         result = prepare_workflow_payload(self.payload, self.variables)
-        inputs = self._dispatch_props(result)["workflowInputs"]
-        self.assertIn("bucket_name", inputs)
-        self.assertIn("environment", inputs)
-        self.assertIn("port_run_id", inputs)
-        self.assertNotIn("ref", inputs)
+        inputs = self._dispatch_config(result)["body"]["inputs"]
+        self.assertEqual(
+            set(inputs),
+            {"bucket_name", "environment", "port_run_id"},
+        )
+
+    def test_dispatch_url_has_no_runtime_template(self) -> None:
+        """Port rejects webhook URLs that still contain run-time templates at apply time."""
+        result = prepare_workflow_payload(self.payload, self.variables)
+        url = self._dispatch_config(result)["url"]
+        self.assertNotIn("{{", url)
+        self.assertIn("/actions/workflows/provision-s3-bucket.yml/dispatches", url)
 
 
 if __name__ == "__main__":
