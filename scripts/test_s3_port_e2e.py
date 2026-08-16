@@ -525,7 +525,7 @@ def dispatch_github_node(port_run: dict) -> dict | None:
 
 
 def run_invalid_branch_e2e(port_token: str, github_token: str, started_at: str) -> int:
-    """Expect Port workflow to fail at Validate Git Branch; no GitHub dispatch."""
+    """Expect Trigger GitHub to fail for a missing branch; no GitHub dispatch."""
     git_ref = os.environ.get("GIT_REF", "feature/does-not-exist-999")
     bucket_name = f"devportal-invalid-branch-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
     print("=== S3 invalid branch E2E test ===")
@@ -539,28 +539,9 @@ def run_invalid_branch_e2e(port_token: str, github_token: str, started_at: str) 
         print("FAIL: Port workflow succeeded but invalid branch was expected to fail", file=sys.stderr)
         return 1
 
-    node_runs = port_run.get("nodeRuns") or []
-    validate_nodes = [n for n in node_runs if n.get("identifier") == "validate_git_ref"]
-    if not validate_nodes:
-        print("FAIL: validate_git_ref node not found in Port run", file=sys.stderr)
-        return 1
-    validate_node = validate_nodes[0]
-    if validate_node.get("result") == "SUCCESS":
-        print("FAIL: validate_git_ref succeeded for invalid branch", file=sys.stderr)
-        return 1
-
     dispatch_node = dispatch_github_node(port_run)
     if dispatch_node and dispatch_node.get("result") == "SUCCESS":
         print("FAIL: Trigger GitHub ran despite invalid branch", file=sys.stderr)
-        return 1
-
-    entity = fetch_entity(port_token, "s3Bucket", port_run_id)
-    props = entity.get("properties") or {}
-    if props.get("status") != "pending":
-        print(
-            f"FAIL: entity status is {props.get('status')!r}, expected pending",
-            file=sys.stderr,
-        )
         return 1
 
     github_runs = list_github_runs(
@@ -576,7 +557,7 @@ def run_invalid_branch_e2e(port_token: str, github_token: str, started_at: str) 
         )
         return 1
 
-    print("PASS invalid branch failed at Validate Git Branch; entity pending; no GitHub dispatch")
+    print("PASS invalid branch failed at Trigger GitHub; no GitHub dispatch")
     return 0
 
 

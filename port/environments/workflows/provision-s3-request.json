@@ -2,7 +2,7 @@
   "identifier": "provision_s3_request",
   "title": "Provision S3 Bucket",
   "icon": "Bucket",
-  "description": "Request S3 bucket provisioning — creates catalog entity, validates Git branch, then dispatches GitHub (legacy Sunset app)",
+  "description": "Request S3 bucket provisioning — creates catalog entity, marks ready, then dispatches GitHub on the form Git Branch",
   "category": "Infra",
   "nodes": [
     {
@@ -20,7 +20,7 @@
             "git_ref": {
               "title": "Git Branch",
               "type": "string",
-              "description": "Git branch to run provision-s3-bucket.yml on (e.g. dev or feature/my-test). Leave empty to use the environment default. A branch that is not present in Git fails the run before GitHub is triggered.",
+              "description": "Git branch to run provision-s3-bucket.yml on (e.g. dev or feature/my-test). Leave empty to use the environment default. A branch that is not present in Git fails at Trigger GitHub.",
               "default": "{{GIT_REF_DEFAULT}}"
             }
           },
@@ -50,24 +50,8 @@
       }
     },
     {
-      "identifier": "validate_git_ref",
-      "title": "Validate Git Branch",
-      "verbose": true,
-      "config": {
-        "type": "WEBHOOK",
-        "url": "https://api.github.com/repos/{{GITHUB_ORG}}/{{GITHUB_REPO}}/branches/{{ .outputs.trigger.git_ref }}",
-        "method": "GET",
-        "synchronized": true,
-        "headers": {
-          "Accept": "application/vnd.github+json",
-          "User-Agent": "port-s3-provision"
-        }
-      }
-    },
-    {
       "identifier": "mark_ready_entity",
       "title": "Mark Catalog Entity Ready (Lambda)",
-      "verbose": true,
       "config": {
         "type": "WEBHOOK",
         "url": "{{API_GATEWAY_URL}}/s3/mark-ready",
@@ -111,10 +95,6 @@
     },
     {
       "sourceIdentifier": "create_pending_entity",
-      "targetIdentifier": "validate_git_ref"
-    },
-    {
-      "sourceIdentifier": "validate_git_ref",
       "targetIdentifier": "mark_ready_entity"
     },
     {
