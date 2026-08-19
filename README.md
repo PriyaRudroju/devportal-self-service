@@ -8,15 +8,17 @@ Self-service developer portal demos using Port.io, GitHub Actions, Terraform Clo
 |---|---|
 | **S3 bucket provisioning** | Port → GitHub → Terraform Cloud → AWS S3 → Port catalog |
 | **EC2 provisioning with Teams approval** | Port → Lambda → Teams → Lambda → Port automation → GitHub → Terraform Cloud → AWS EC2 → Port catalog |
+| **ServiceNow request from Port** | Port → Lambda → ServiceNow Service Catalog → Port catalog (ticket number + link) |
 
 ## Architecture
 
 ### S3 provisioning
 
 ```
-Port.io Self-Service Workflow (form → catalog entity)
-  → Port automation trigger_github_on_s3_ready (legacy GitHub app)
-  → GitHub Actions (workflow_dispatch on branch from gitRef)
+Port.io Self-Service Workflow (form → catalog entity, status pending)
+  → Trigger GitHub node (webhook to GitHub REST API, ref from form Git Branch)
+  → Mark Catalog Entity Ready (Lambda, only after a successful dispatch)
+  → GitHub Actions (workflow_dispatch on that branch)
     → Terraform Cloud (remote state + apply)
       → AWS S3 bucket
         → Port.io catalog updated (UPSERT on success)
@@ -39,6 +41,18 @@ Port self-service action (WEBHOOK backend)
 
 Approval happens in Teams/Lambda, not Port native approval. GitHub runs only after the catalog entity moves to `approvalStatus=approved`.
 
+### ServiceNow request from Port
+
+```
+Port.io Self-Service Workflow (form → catalog entity, status pending)
+  → Create ServiceNow Request (webhook → Lambda POST /servicenow/create-request)
+      → ServiceNow Table API (resolve requester email to sys_user sys_id)
+      → ServiceNow Service Catalog API (order_now on the catalog item)
+      → Port API PATCH (ticketNumber, ticketUrl, status submitted)
+```
+
+Prototype slice against a ServiceNow developer instance: one Port form, one ticket, no approval callbacks. The developer never opens a ServiceNow catalog form — submit happens in Port, and the catalog **Track in ServiceNow** link is for viewing the already-created request. An unknown requester email or a ServiceNow error leaves the entity `failed` with the reason in `errorMessage`. See [`docs/SERVICENOW_SETUP.md`](docs/SERVICENOW_SETUP.md).
+
 ## Repository structure
 
 ```
@@ -53,6 +67,7 @@ port/
   resources/                           # Shared blueprints (all branches)
     s3-bucket.json
     ec2-change-request.json
+    service-now-request.json
   environments/                        # ONE environment per Git branch
     config.env                         # PORT_ENV=dev|qa|prod
     workflows/                         # Port Workflows
@@ -71,8 +86,10 @@ terraform/
 scripts/
   apply_port_config.py                 # Apply Port JSON to single org via API
   load_env_config.sh                   # Source config.env in CI
+  servicenow_smoke.py                  # Prove ServiceNow user lookup + order_now
 docs/
   GITHUB_SETUP.md                      # Branch protection and GitHub Environments
+  SERVICENOW_SETUP.md                  # ServiceNow instance, catalog item, credentials
 ```
 
 ## Port config GitOps (three-branch: dev → qa → main)
@@ -113,7 +130,9 @@ Example dev values:
 
 Variable precedence: `port/environments/config.env` first, then GitHub Environment variables override in CI.
 
-Port self-service forms use a **Git Branch** dropdown (`GIT_REF_DEFAULT` + `FEATURE_GIT_REFS` in `config.env`). Selecting `dev` runs GitHub on the stable dev branch; feature branch names are for testing Port/Git changes only — Terraform still targets dev infrastructure. See [`port/PROMOTION.md`](port/PROMOTION.md).
+Port self-service forms use a **Git Branch** field (`GIT_REF_DEFAULT` in `config.env`). S3 is free-text and required, pre-filled with the default (`dev` here); a branch that is not present in Git fails the run. Feature branch names are for testing Port/Git changes only — Terraform still targets dev infrastructure. See [`port/PROMOTION.md`](port/PROMOTION.md).
+
+S3 dispatch needs a Port organization secret **`GITHUB_DISPATCH_TOKEN`** (GitHub token with Actions read/write). See [`docs/GITHUB_SETUP.md`](docs/GITHUB_SETUP.md).
 
 ### Local validate and apply
 
@@ -272,9 +291,9 @@ Import [`port/environments/automations/trigger-github-on-ec2-approved.json`](por
 
 ## 5. Verify S3 flow
 
-1. Run **Provision S3 Bucket** from Port Self-service
-2. Confirm the Port workflow run completes (**S3 Request Form** → **Create Ready Catalog Entity**)
-3. Confirm automation **Trigger GitHub When S3 Ready** runs (Port → Automations)
+1. Run **Provision S3 Bucket** from Port Self-service (**Git Branch** is pre-filled with `GIT_REF_DEFAULT`, e.g. `dev`)
+2. Confirm the Port workflow run completes (**S3 Request Form** → **Create Pending Catalog Entity** → **Trigger GitHub** → **Mark Catalog Entity Ready**)
+3. A branch that is not present in Git fails at **Trigger GitHub** with GitHub `422 No ref found`, leaving the entity at `status: pending`
 4. Check GitHub Actions workflow `Provision S3 Bucket` (branch should match form **Git Branch**, e.g. `dev`)
 5. Check TFC workspace `dev-portal-s3-dev`
 6. Confirm bucket in AWS S3 (`us-east-1`)

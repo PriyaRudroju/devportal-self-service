@@ -108,16 +108,42 @@ Verify Port dispatches to the correct branch after changing default branch setti
 
 ## S3 provisioning branch ref
 
-S3 and EC2 automations pass **`ref`** as a **top-level** field in `integrationActionExecutionProperties` from entity **`gitRef`**. **`ref` is the Git branch for dispatch, not a GitHub workflow input** — do not include it in `workflowInputs` for [`provision-s3-bucket.yml`](../../.github/workflows/provision-s3-bucket.yml) (which only declares `bucket_name`, `environment`, `port_run_id`). Extra inputs cause GitHub to reject the dispatch.
+The **Provision S3 Bucket** request workflow creates the catalog entity as `pending`, then the **Trigger GitHub** node dispatches [`provision-s3-bucket.yml`](../../.github/workflows/provision-s3-bucket.yml) on the branch from the form field **Git Branch** (`{{ .outputs.trigger.git_ref }}`), and only marks the entity ready once that dispatch succeeds.
+
+This org runs the **legacy Sunset** GitHub app, and Port rejects GitHub `INTEGRATION_ACTION` nodes **inside workflows** (it resolves them against the Ocean integration, which is not installed). So the node is a **WEBHOOK** that calls the GitHub REST dispatch API directly:
+
+```
+POST https://api.github.com/repos/<org>/<repo>/actions/workflows/provision-s3-bucket.yml/dispatches
+body: { "ref": "<git branch>", "inputs": { bucket_name, environment, port_run_id } }
+```
+
+`ref` is the Git branch and belongs in the **body root**, not in `inputs` — `provision-s3-bucket.yml` only declares `bucket_name`, `environment`, `port_run_id`, and undeclared inputs cause GitHub to reject the dispatch.
+
+### Required Port secret
+
+The node authenticates with a Port organization secret named **`GITHUB_DISPATCH_TOKEN`**.
+
+1. Port → **Settings → Secrets → + Secret**
+2. Name: `GITHUB_DISPATCH_TOKEN`
+3. Value: a GitHub token with **Actions: read and write** on this repo
+
+Without it, **Trigger GitHub** fails with GitHub `401`.
+
+**Git Branch** is required on the form and pre-filled with `GIT_REF_DEFAULT` (`dev` on this environment), so an empty branch can never dispatch to `main`. A branch that is not present in Git fails at **Trigger GitHub** with GitHub `422 No ref found`, and because the dispatch runs before mark-ready the entity stays at `status: pending`. Automation `trigger_github_on_s3_ready` stays unpublished so the form path does not dispatch twice.
+
+S3 and EC2 **automations** (when published) pass **`ref`** as a **top-level** field from entity **`gitRef`**. On `ENTITY_UPDATED` triggers, Port omits unchanged properties from `diff.after` — use **`diff.before.properties.gitRef`**.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Deploy Port Config 422 `github-ocean is not a valid integration` | Workflow node used Ocean integration in legacy mode | Use automation dispatch only (this repo on `dev`) |
-| Provision S3 Bucket never starts / automation Failed | `ref` sent inside `workflowInputs` (undeclared GitHub input) | Keep `ref` top-level only; re-apply Port config |
-| Automation never runs after form submit | Workflow `UPSERT_ENTITY` / in-workflow Port API calls do not emit catalog automation events | Mark ready via **external** Port API call (Lambda `POST /s3/mark-ready` or Teams-style handler) so `ENTITY_UPDATED` fires |
-| Provision S3 Bucket runs on **`main`** | `ref` empty because automation reads `gitRef` from `diff.after` on status-only update | Use `diff.before.properties.gitRef` for `ref` (and other unchanged fields); re-apply Port config |
-| GitHub dispatch rejected / no run at all | Empty `ref` defaults to **`main`** workflow file which expects **`port_context`**, but automation sends **`port_run_id`** | Fix `ref` to dispatch on feature branch where workflow declares `port_run_id`; ensure **`main`** also declares `port_run_id` (Port legacy requires workflow on default branch) |
-| Feature branch not in dropdown | `FEATURE_GIT_REFS` empty | Push `port/**` on `feature/*` branch to trigger Deploy Port Config |
+| Deploy Port Config fails at **Apply Port configuration** after adding a GitHub node to a workflow | Port resolves workflow `INTEGRATION_ACTION` GitHub nodes against `github-ocean`, which is not installed in legacy mode | Dispatch from a **WEBHOOK** node against the GitHub REST API (current design), or dispatch from an automation |
+| Deploy Port Config fails on a webhook node URL | Webhook `url` contained a runtime template such as `{{ .outputs.trigger.git_ref }}` | Keep templates in the **body**; the URL must be static after `config.env` substitution |
+| Trigger GitHub fails with `401` | Port secret `GITHUB_DISPATCH_TOKEN` missing or lacks Actions write | Create/rotate the secret in Port → Settings → Secrets |
+| Trigger GitHub fails with `422 No ref found` | Typed a branch that does not exist in Git | Use a real branch name |
+| Catalog entity stuck at `pending` with no GitHub run | **Trigger GitHub** failed, so **Mark Catalog Entity Ready** never ran | Open the Port run, read the Trigger GitHub response, then delete or resubmit the entity |
+| Provision S3 Bucket never starts / Trigger GitHub Failed | `ref` sent inside `inputs` (undeclared GitHub input) | Keep `ref` at the body root only; re-apply Port config |
+| `POST /s3/validate-git-ref` returns 404 at runtime | API Gateway does not have that route deployed | Apply terraform for `dev-portal-integration-dev`, or leave branch checking to **Trigger GitHub** |
+| Provision S3 Bucket runs on **`main`** | `ref` empty because Trigger GitHub is missing or `git_ref` did not interpolate | Request workflow must use `{{ .outputs.trigger.git_ref }}`; re-apply Port config. Run `python scripts/verify_s3_github_ref.py --check-live` |
+| GitHub dispatch rejected / no run at all | Dispatched branch's workflow file expects **`port_context`** but dispatch sends **`port_run_id`** | Ensure the target branch (and **`main`**) declares `port_run_id` |
 | Wrong branch when using JSON mode | Used `environment: "dev"` or `git_branch` instead of `git_ref` | S3/EC2 forms use input **`git_ref`** for Git Branch; Terraform env is always `dev` on the entity |
 | Old workflow inputs (`port_context`) in run logs | Dispatch used **`main`** branch workflow file | Confirm newest run shows correct branch and input **`port_run_id`** |
-| `PATCH_RUN` 404 for `wfr_...` id | Port **workflow** runs use `wfr_` ids; `PATCH_RUN` only applies to **action** runs | S3 workflow uses catalog UPSERT only; automation uses `reportWorkflowStatus` |
+| `PATCH_RUN` 404 for `wfr_...` id | Port **workflow** runs use `wfr_` ids; `PATCH_RUN` only applies to **action** runs | S3 workflow uses catalog UPSERT only |

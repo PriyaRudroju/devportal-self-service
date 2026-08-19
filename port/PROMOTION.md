@@ -35,7 +35,9 @@ Each branch contains **only** its Port deploy and validate workflows (no manual 
 
 ## Git Branch dropdown (`config.env`)
 
-Port self-service forms expose a **Git Branch** field (not AWS environment). Values are built at apply time:
+Port self-service forms expose a **Git Branch** field (not AWS environment). S3 is optional free-text: empty uses `GIT_REF_DEFAULT`; a branch that is not present in Git fails the Port run and GitHub is not dispatched. The **Trigger GitHub** node on `provision_s3_request` is what starts `provision-s3-bucket.yml`.
+
+Values for enum dropdowns (when used) are built at apply time:
 
 | Variable | Purpose |
 |---|---|
@@ -117,6 +119,7 @@ See [`docs/GITHUB_SETUP.md`](../docs/GITHUB_SETUP.md) for branch protection and 
 | Feature branch missing in Port dropdown | Push `port/**` on the feature branch so Deploy Port Config injects `FEATURE_GIT_REFS` | 
 | Wrong API URL in Port | Check GitHub Environment variable for that env |
 | EC2 workflow runs wrong branch | Automation `ref` must match branch (`dev`, `qa`, `main`) |
-| S3 workflow runs on **`main`** instead of selected Git Branch | S3 automation must read `gitRef` from **`diff.before.properties.gitRef`** (not `diff.after`); re-apply Port config. Run `python scripts/verify_s3_github_ref.py --check-live` |
-| S3 GitHub dispatch never starts | Mark-ready must use **external** Port API (Lambda `POST /s3/mark-ready` or E2E PATCH) so `ENTITY_UPDATED` fires; workflow-internal PATCH does not trigger legacy automations. Ensure `provision_s3_after_ready` workflow is applied in legacy mode |
+| S3 workflow runs on **`main`** instead of selected Git Branch | S3 **Trigger GitHub** node must send form `git_ref` as `ref` in the webhook body root (not inside `inputs`); re-apply Port config. Run `python scripts/verify_s3_github_ref.py --check-live` |
+| S3 GitHub dispatch never starts | Request workflow must include **Trigger GitHub** after **Create Pending Catalog Entity** and before mark-ready, and Port secret `GITHUB_DISPATCH_TOKEN` must exist. A missing Git branch fails there with GitHub `422` and leaves the entity at `pending`. Automation `trigger_github_on_s3_ready` is unpublished to avoid double dispatch |
+| Deploy Port Config fails applying a workflow with a GitHub node | Legacy mode cannot use `INTEGRATION_ACTION` GitHub nodes inside workflows (Port resolves them to `github-ocean`) | Dispatch via a WEBHOOK node to the GitHub REST API — see [`docs/GITHUB_SETUP.md`](../docs/GITHUB_SETUP.md) |
 | 409 on create | Normal — script retries with PUT/PATCH update |
