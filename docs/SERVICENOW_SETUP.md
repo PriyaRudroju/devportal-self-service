@@ -69,13 +69,9 @@ Add `--lookup-only` to check credentials and the user lookup without creating a 
 
 ## 5. Deploy the Lambda route
 
-```bash
-cd terraform/environments/dev-integration
-terraform init
-terraform apply
-```
+This demo applies Lambda + API Gateway from workspace **`dev-portal-s3-dev`** (`terraform/environments/dev`). Put the four ServiceNow variables on that workspace, then plan and apply. Keep `bucket_name` as the value already in state so you do not create an extra bucket.
 
-This adds `POST /servicenow/create-request` to the existing HTTP API and passes the four ServiceNow environment variables to the Lambda.
+The apply creates `POST /servicenow/create-request` in **us-east-2**. Copy the `api_gateway_url` output into GitHub Environment `API_GATEWAY_URL` and `port/environments/config.env`, then run **Deploy Port Config**. Port must call the new URL; the old `fvoyz6jb9i` gateway does not have this route.
 
 ## 6. Apply the Port config
 

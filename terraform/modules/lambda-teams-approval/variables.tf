@@ -43,6 +43,7 @@ variable "github_token" {
   type        = string
   description = "GitHub PAT for branch existence checks (repo read)"
   sensitive   = true
+  default     = ""
 }
 
 variable "github_org" {
