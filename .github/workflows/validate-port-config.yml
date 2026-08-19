@@ -5,8 +5,10 @@ on:
     branches: [dev]
     paths:
       - "port/**"
+      - "lambda/**"
       - "scripts/apply_port_config.py"
       - "scripts/load_env_config.sh"
+      - "scripts/test_*.py"
       - ".github/workflows/validate-port-config.yml"
       - ".github/workflows/deploy-port-config.yml"
 
@@ -31,3 +33,8 @@ jobs:
 
       - name: Unit test Port config helpers
         run: python scripts/test_apply_port_config.py
+
+      - name: Unit test Lambda handlers
+        run: |
+          python scripts/test_lambda_s3_validate.py
+          python scripts/test_lambda_servicenow.py

@@ -56,6 +56,11 @@ resource "aws_lambda_function" "teams_approval" {
       GITHUB_ORG           = var.github_org
       GITHUB_REPO          = var.github_repo
       GIT_REF_DEFAULT      = var.git_ref_default
+
+      SERVICENOW_INSTANCE_URL        = var.servicenow_instance_url
+      SERVICENOW_USERNAME            = var.servicenow_username
+      SERVICENOW_PASSWORD            = var.servicenow_password
+      SERVICENOW_CATALOG_ITEM_SYS_ID = var.servicenow_catalog_item_sys_id
     }
   }
 
@@ -80,8 +85,8 @@ resource "aws_apigatewayv2_stage" "default" {
 resource "aws_apigatewayv2_integration" "lambda" {
   api_id                 = aws_apigatewayv2_api.teams_approval.id
   integration_type       = "AWS_PROXY"
-  integration_uri          = aws_lambda_function.teams_approval.invoke_arn
-  payload_format_version   = "2.0"
+  integration_uri        = aws_lambda_function.teams_approval.invoke_arn
+  payload_format_version = "2.0"
   integration_method     = "POST"
 }
 
@@ -100,6 +105,12 @@ resource "aws_apigatewayv2_route" "s3_validate_git_ref" {
 resource "aws_apigatewayv2_route" "s3_mark_ready" {
   api_id    = aws_apigatewayv2_api.teams_approval.id
   route_key = "POST /s3/mark-ready"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
+}
+
+resource "aws_apigatewayv2_route" "servicenow_create_request" {
+  api_id    = aws_apigatewayv2_api.teams_approval.id
+  route_key = "POST /servicenow/create-request"
   target    = "integrations/${aws_apigatewayv2_integration.lambda.id}"
 }
 

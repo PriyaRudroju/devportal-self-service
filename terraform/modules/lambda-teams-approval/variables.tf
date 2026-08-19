@@ -61,6 +61,32 @@ variable "git_ref_default" {
   default     = "dev"
 }
 
+variable "servicenow_instance_url" {
+  type        = string
+  description = "ServiceNow instance base URL, e.g. https://dev123456.service-now.com"
+  default     = ""
+}
+
+variable "servicenow_username" {
+  type        = string
+  description = "ServiceNow user for Table and Service Catalog API calls"
+  sensitive   = true
+  default     = ""
+}
+
+variable "servicenow_password" {
+  type        = string
+  description = "Password for the ServiceNow API user"
+  sensitive   = true
+  default     = ""
+}
+
+variable "servicenow_catalog_item_sys_id" {
+  type        = string
+  description = "sys_id of the catalog item ordered by the Port form"
+  default     = ""
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags applied to created resources"

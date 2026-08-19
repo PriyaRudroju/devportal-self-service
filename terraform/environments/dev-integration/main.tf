@@ -28,6 +28,11 @@ module "teams_approval" {
   github_repo        = var.github_repo
   git_ref_default    = var.git_ref_default
 
+  servicenow_instance_url        = var.servicenow_instance_url
+  servicenow_username            = var.servicenow_username
+  servicenow_password            = var.servicenow_password
+  servicenow_catalog_item_sys_id = var.servicenow_catalog_item_sys_id
+
   tags = {
     Project     = "devportal-self-service"
     Environment = "dev"

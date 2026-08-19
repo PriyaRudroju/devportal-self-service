@@ -1,0 +1,85 @@
+{
+  "identifier": "servicenow_request",
+  "title": "Request ServiceNow Ticket",
+  "icon": "Servicenow",
+  "description": "Submit from Port. ServiceNow creates the ticket in the background. Use the catalog link only to track it.",
+  "category": "Access",
+  "nodes": [
+    {
+      "identifier": "trigger",
+      "title": "ServiceNow Request Form",
+      "config": {
+        "type": "SELF_SERVE_TRIGGER",
+        "userInputs": {
+          "properties": {
+            "requested_for_email": {
+              "title": "Requested For (email)",
+              "type": "string",
+              "description": "Email of the person the request is for. Must match a ServiceNow user, otherwise the run fails at Create ServiceNow Request."
+            },
+            "service": {
+              "title": "Service",
+              "type": "string",
+              "description": "Service or access being requested (e.g. AWS dev account)"
+            },
+            "justification": {
+              "title": "Justification",
+              "type": "string",
+              "description": "Why this access is needed"
+            }
+          },
+          "required": ["requested_for_email", "service"]
+        }
+      }
+    },
+    {
+      "identifier": "create_pending_entity",
+      "title": "Create Pending Catalog Entity",
+      "config": {
+        "type": "UPSERT_ENTITY",
+        "blueprintIdentifier": "serviceNowRequest",
+        "mapping": {
+          "identifier": "{{ .workflowRun.identifier }}",
+          "title": "S/N {{ .outputs.trigger.service }}",
+          "properties": {
+            "requestedForEmail": "{{ .outputs.trigger.requested_for_email }}",
+            "requestedBy": "{{ .workflowRun.trigger.by.email }}",
+            "service": "{{ .outputs.trigger.service }}",
+            "justification": "{{ .outputs.trigger.justification }}",
+            "status": "pending",
+            "portRunId": "{{ .workflowRun.identifier }}"
+          }
+        }
+      }
+    },
+    {
+      "identifier": "create_servicenow_request",
+      "title": "Create ServiceNow Request",
+      "config": {
+        "type": "WEBHOOK",
+        "url": "{{API_GATEWAY_URL}}/servicenow/create-request",
+        "method": "POST",
+        "synchronized": true,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "entityId": "{{ .workflowRun.identifier }}",
+          "requested_for_email": "{{ .outputs.trigger.requested_for_email }}",
+          "service": "{{ .outputs.trigger.service }}",
+          "justification": "{{ .outputs.trigger.justification }}"
+        }
+      }
+    }
+  ],
+  "connections": [
+    {
+      "sourceIdentifier": "trigger",
+      "targetIdentifier": "create_pending_entity"
+    },
+    {
+      "sourceIdentifier": "create_pending_entity",
+      "targetIdentifier": "create_servicenow_request"
+    }
+  ]
+}

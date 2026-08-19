@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import urllib.error
@@ -376,6 +377,170 @@ def handle_s3_mark_ready(event: dict) -> dict:
     )
 
 
+def _servicenow_instance_url() -> str:
+    return _env("SERVICENOW_INSTANCE_URL").rstrip("/")
+
+
+def _servicenow_blueprint() -> str:
+    return _optional_env("SERVICENOW_PORT_BLUEPRINT", "serviceNowRequest")
+
+
+def _servicenow_authorization() -> str:
+    credentials = f"{_env('SERVICENOW_USERNAME')}:{_env('SERVICENOW_PASSWORD')}"
+    encoded = base64.b64encode(credentials.encode("utf-8")).decode("ascii")
+    return f"Basic {encoded}"
+
+
+def _servicenow_request(method: str, path: str, payload: dict | None = None) -> dict:
+    url = f"{_servicenow_instance_url()}{path}"
+    data = json.dumps(payload).encode("utf-8") if payload is not None else None
+    request = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+            "Authorization": _servicenow_authorization(),
+        },
+        method=method,
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        body = response.read().decode("utf-8")
+    return json.loads(body) if body else {}
+
+
+def resolve_servicenow_user(email: str) -> str:
+    """Return the sys_user sys_id for an email, or an empty string when absent."""
+    query = urllib.parse.urlencode(
+        {
+            "sysparm_query": f"email={email}",
+            "sysparm_fields": "sys_id",
+            "sysparm_limit": "1",
+        }
+    )
+    body = _servicenow_request("GET", f"/api/now/table/sys_user?{query}")
+    records = body.get("result") or []
+    if not records:
+        return ""
+    return (records[0].get("sys_id") or "").strip()
+
+
+def _servicenow_ticket_url(sys_id: str) -> str:
+    target = urllib.parse.quote(f"sc_request.do?sys_id={sys_id}", safe="")
+    return f"{_servicenow_instance_url()}/nav_to.do?uri={target}"
+
+
+def _mark_servicenow_failed(blueprint: str, entity_id: str, message: str) -> None:
+    """Record the failure on the catalog entity, never masking the original error."""
+    try:
+        _patch_port_entity(blueprint, entity_id, {"status": "failed", "errorMessage": message})
+    except Exception:  # noqa: BLE001 - the caller reports the original failure
+        pass
+
+
+def handle_servicenow_create_request(event: dict) -> dict:
+    """Order a ServiceNow catalog item and write the ticket back to the Port entity."""
+    payload = _parse_body(event)
+    entity_id = _extract_entity_id(payload)
+    if not entity_id:
+        return _response(400, {"error": "entityId is required"})
+
+    blueprint = _servicenow_blueprint()
+    entity = _get_port_entity(blueprint, entity_id)
+    props = entity.get("properties") or {}
+
+    existing_ticket = (props.get("ticketNumber") or "").strip()
+    if existing_ticket:
+        return _response(
+            200,
+            {
+                "message": "ServiceNow request already created",
+                "entityId": entity_id,
+                "ticketNumber": existing_ticket,
+            },
+        )
+
+    email = (
+        payload.get("requested_for_email")
+        or payload.get("requestedForEmail")
+        or props.get("requestedForEmail")
+        or ""
+    ).strip()
+    if not email:
+        _mark_servicenow_failed(blueprint, entity_id, "requested_for_email is required")
+        return _response(400, {"error": "requested_for_email is required"})
+
+    variables = {
+        key: value
+        for key, value in (
+            ("service", (payload.get("service") or props.get("service") or "").strip()),
+            (
+                "justification",
+                (payload.get("justification") or props.get("justification") or "").strip(),
+            ),
+        )
+        if value
+    }
+
+    try:
+        requested_for = resolve_servicenow_user(email)
+        if not requested_for:
+            message = f"No ServiceNow user found for '{email}'"
+            _mark_servicenow_failed(blueprint, entity_id, message)
+            return _response(400, {"error": message})
+
+        item_sys_id = _env("SERVICENOW_CATALOG_ITEM_SYS_ID")
+        result = _servicenow_request(
+            "POST",
+            f"/api/sn_sc/servicecatalog/items/{item_sys_id}/order_now",
+            {
+                "sysparm_quantity": "1",
+                "sysparm_requested_for": requested_for,
+                "variables": variables,
+            },
+        )
+    except urllib.error.HTTPError as exc:
+        details = exc.read().decode("utf-8", errors="replace")
+        message = f"ServiceNow returned {exc.code}: {details}"
+        _mark_servicenow_failed(blueprint, entity_id, message)
+        return _response(502, {"error": "ServiceNow request failed", "details": details})
+    except Exception as exc:  # noqa: BLE001 - surface the reason on the catalog entity
+        _mark_servicenow_failed(blueprint, entity_id, str(exc))
+        return _response(502, {"error": "ServiceNow request failed", "details": str(exc)})
+
+    created = result.get("result") or {}
+    ticket_number = (created.get("request_number") or created.get("number") or "").strip()
+    ticket_sys_id = (created.get("request_id") or created.get("sys_id") or "").strip()
+
+    if not ticket_number or not ticket_sys_id:
+        message = f"Could not parse the created request from ServiceNow: {json.dumps(result)}"
+        _mark_servicenow_failed(blueprint, entity_id, message)
+        return _response(502, {"error": message})
+
+    _patch_port_entity(
+        blueprint,
+        entity_id,
+        {
+            "ticketNumber": ticket_number,
+            "ticketSysId": ticket_sys_id,
+            "ticketUrl": _servicenow_ticket_url(ticket_sys_id),
+            "requestedForEmail": email,
+            "status": "submitted",
+            "errorMessage": "",
+        },
+    )
+
+    return _response(
+        200,
+        {
+            "message": "ServiceNow request created",
+            "entityId": entity_id,
+            "ticketNumber": ticket_number,
+            "ticketSysId": ticket_sys_id,
+        },
+    )
+
+
 def handle_teams_notify(event: dict) -> dict:
     """Send Teams approval card only (Port Workflow owns catalog UPSERT)."""
     payload = _normalize_ec2_request(_parse_body(event))
@@ -500,6 +665,9 @@ def lambda_handler(event, context):
 
         if method == "POST" and _route_matches(raw_path, "/s3/mark-ready"):
             return handle_s3_mark_ready(event)
+
+        if method == "POST" and _route_matches(raw_path, "/servicenow/create-request"):
+            return handle_servicenow_create_request(event)
 
         if method == "POST" and _route_matches(raw_path, "/ec2/request"):
             return handle_ec2_request(event)
