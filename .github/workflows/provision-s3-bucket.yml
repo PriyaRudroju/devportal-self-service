@@ -45,6 +45,21 @@ jobs:
             exit 1
           fi
 
+      - name: Link GitHub run to Port catalog
+        continue-on-error: true
+        uses: port-labs/port-github-action@v1
+        with:
+          clientId: ${{ secrets.PORT_CLIENT_ID }}
+          clientSecret: ${{ secrets.PORT_CLIENT_SECRET }}
+          operation: UPSERT
+          blueprint: s3Bucket
+          identifier: ${{ inputs.port_run_id }}
+          properties: |
+            {
+              "runUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}",
+              "gitRef": "${{ github.ref_name }}"
+            }
+
       - uses: hashicorp/setup-terraform@v3
         with:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
@@ -79,7 +94,8 @@ jobs:
               "bucketName": "${{ inputs.bucket_name }}",
               "environment": "${{ inputs.environment }}",
               "status": "provisioned",
-              "region": "us-east-1"
+              "region": "us-east-1",
+              "runUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
 
       - name: Report failure to Port catalog
@@ -96,5 +112,6 @@ jobs:
               "bucketName": "${{ inputs.bucket_name }}",
               "environment": "${{ inputs.environment }}",
               "status": "failed",
-              "region": "us-east-1"
+              "region": "us-east-1",
+              "runUrl": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }

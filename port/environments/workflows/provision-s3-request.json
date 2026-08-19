@@ -2,7 +2,7 @@
   "identifier": "provision_s3_request",
   "title": "Provision S3 Bucket",
   "icon": "Bucket",
-  "description": "Request S3 bucket provisioning — creates catalog entity; GitHub dispatch runs via automation (legacy Sunset app)",
+  "description": "Request S3 bucket provisioning — creates catalog entity, dispatches GitHub on the form Git Branch, then marks ready",
   "category": "Infra",
   "nodes": [
     {
@@ -17,35 +17,74 @@
               "type": "string",
               "description": "Globally unique S3 bucket name"
             },
-            "environment": {
+            "git_ref": {
               "title": "Git Branch",
               "type": "string",
-              "description": "dev = stable dev branch. Feature branch names are for testing Port/Git changes only — Terraform still targets dev infrastructure.",
-              "enum": {{GIT_REF_ENUM}},
+              "description": "Git branch to run provision-s3-bucket.yml on (e.g. dev or feature/my-test). Defaults to {{GIT_REF_DEFAULT}}. A branch that is not present in Git fails at Trigger GitHub.",
               "default": "{{GIT_REF_DEFAULT}}"
             }
           },
-          "required": ["bucket_name", "environment"]
+          "required": ["bucket_name", "git_ref"]
         }
       }
     },
     {
-      "identifier": "create_ready_entity",
-      "title": "Create Ready Catalog Entity",
+      "identifier": "create_pending_entity",
+      "title": "Create Pending Catalog Entity",
       "config": {
         "type": "UPSERT_ENTITY",
         "blueprintIdentifier": "s3Bucket",
         "mapping": {
-          "identifier": "{{ .run.id }}",
+          "identifier": "{{ .workflowRun.identifier }}",
           "title": "S3 {{ .outputs.trigger.bucket_name }}",
           "properties": {
             "bucketName": "{{ .outputs.trigger.bucket_name }}",
-            "gitRef": "{{ .outputs.trigger.environment }}",
+            "gitRef": "{{ .outputs.trigger.git_ref }}",
             "environment": "dev",
             "region": "{{AWS_REGION}}",
-            "status": "ready",
-            "requestedBy": "{{ .trigger.by.user.email }}",
-            "portRunId": "{{ .run.id }}"
+            "status": "pending",
+            "requestedBy": "{{ .workflowRun.trigger.by.email }}",
+            "portRunId": "{{ .workflowRun.identifier }}"
+          }
+        }
+      }
+    },
+    {
+      "identifier": "mark_ready_entity",
+      "title": "Mark Catalog Entity Ready (Lambda)",
+      "config": {
+        "type": "WEBHOOK",
+        "url": "{{API_GATEWAY_URL}}/s3/mark-ready",
+        "method": "POST",
+        "synchronized": true,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "entityId": "{{ .workflowRun.identifier }}"
+        }
+      }
+    },
+    {
+      "identifier": "dispatch_github",
+      "title": "Trigger GitHub",
+      "config": {
+        "type": "WEBHOOK",
+        "url": "https://api.github.com/repos/{{GITHUB_ORG}}/{{GITHUB_REPO}}/actions/workflows/provision-s3-bucket.yml/dispatches",
+        "method": "POST",
+        "synchronized": true,
+        "headers": {
+          "Accept": "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Content-Type": "application/json",
+          "Authorization": "Bearer {{ .secrets[\"GITHUB_DISPATCH_TOKEN\"] }}"
+        },
+        "body": {
+          "ref": "{{ .outputs.trigger.git_ref }}",
+          "inputs": {
+            "bucket_name": "{{ .outputs.trigger.bucket_name }}",
+            "environment": "dev",
+            "port_run_id": "{{ .workflowRun.identifier }}"
           }
         }
       }
@@ -54,7 +93,15 @@
   "connections": [
     {
       "sourceIdentifier": "trigger",
-      "targetIdentifier": "create_ready_entity"
+      "targetIdentifier": "create_pending_entity"
+    },
+    {
+      "sourceIdentifier": "create_pending_entity",
+      "targetIdentifier": "dispatch_github"
+    },
+    {
+      "sourceIdentifier": "dispatch_github",
+      "targetIdentifier": "mark_ready_entity"
     }
   ]
 }

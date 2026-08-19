@@ -23,15 +23,14 @@
               "enum": ["t3.micro", "t3.small", "t3.medium"],
               "default": "t3.micro"
             },
-            "environment": {
+            "git_ref": {
               "title": "Git Branch",
               "type": "string",
-              "description": "dev = stable dev branch. Feature branch names are for testing Port/Git changes only — Terraform still targets dev infrastructure.",
-              "enum": {{GIT_REF_ENUM}},
+              "description": "Git branch to run the GitHub workflow on (e.g. dev or feature/my-test). Terraform still targets dev infrastructure.",
               "default": "{{GIT_REF_DEFAULT}}"
             }
           },
-          "required": ["instance_name", "instance_type", "environment"]
+          "required": ["instance_name", "instance_type", "git_ref"]
         }
       }
     },
@@ -47,7 +46,7 @@
           "properties": {
             "instanceName": "{{ .outputs.trigger.instance_name }}",
             "instanceType": "{{ .outputs.trigger.instance_type }}",
-            "gitRef": "{{ .outputs.trigger.environment }}",
+            "gitRef": "{{ .outputs.trigger.git_ref }}",
             "environment": "dev",
             "region": "{{AWS_REGION}}",
             "approvalStatus": "pending",
@@ -70,7 +69,7 @@
           "instance_name": "{{ .outputs.trigger.instance_name }}",
           "instance_type": "{{ .outputs.trigger.instance_type }}",
           "environment": "dev",
-          "git_ref": "{{ .outputs.trigger.environment }}",
+          "git_ref": "{{ .outputs.trigger.git_ref }}",
           "requested_by": "{{ .trigger.by.user.email }}",
           "port_run_url": "https://app.port.io/organization/run?runId={{ .run.id }}",
           "action_title": "EC2 Change Request"

@@ -14,7 +14,7 @@
       },
       "gitRef": {
         "type": "string",
-        "title": "Git Branch Ref"
+        "title": "GitHub dispatch branch"
       },
       "region": {
         "type": "string",
@@ -34,6 +34,12 @@
       "portRunId": {
         "type": "string",
         "title": "Port Run ID"
+      },
+      "runUrl": {
+        "type": "string",
+        "format": "url",
+        "title": "GitHub Run",
+        "description": "GitHub Actions run that provisioned this bucket"
       }
     },
     "required": ["bucketName", "environment"]

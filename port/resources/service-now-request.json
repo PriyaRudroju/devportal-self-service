@@ -1,0 +1,55 @@
+{
+  "identifier": "serviceNowRequest",
+  "title": "ServiceNow Request",
+  "icon": "Servicenow",
+  "schema": {
+    "properties": {
+      "requestedForEmail": {
+        "type": "string",
+        "title": "Requested For",
+        "description": "Email of the person the request is for, resolved to a ServiceNow user"
+      },
+      "requestedBy": {
+        "type": "string",
+        "title": "Requested By"
+      },
+      "service": {
+        "type": "string",
+        "title": "Service"
+      },
+      "justification": {
+        "type": "string",
+        "title": "Justification"
+      },
+      "ticketNumber": {
+        "type": "string",
+        "title": "Ticket Number"
+      },
+      "ticketUrl": {
+        "type": "string",
+        "format": "url",
+        "title": "Track in ServiceNow",
+        "description": "Opens the already-submitted ServiceNow request for tracking. This is not a form to fill."
+      },
+      "ticketSysId": {
+        "type": "string",
+        "title": "Ticket sys_id"
+      },
+      "status": {
+        "type": "string",
+        "title": "Status",
+        "enum": ["pending", "submitted", "failed"],
+        "default": "pending"
+      },
+      "errorMessage": {
+        "type": "string",
+        "title": "Error Message"
+      },
+      "portRunId": {
+        "type": "string",
+        "title": "Port Run ID"
+      }
+    },
+    "required": ["requestedForEmail"]
+  }
+}

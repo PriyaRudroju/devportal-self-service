@@ -1,0 +1,55 @@
+{
+  "identifier": "provision_s3_after_ready",
+  "title": "Provision S3 After Ready",
+  "icon": "Bucket",
+  "description": "Dispatches GitHub S3 provisioning when catalog entity moves pending to ready (legacy Sunset app)",
+  "category": "Infra",
+  "nodes": [
+    {
+      "identifier": "trigger",
+      "title": "On S3 Ready",
+      "config": {
+        "type": "EVENT_TRIGGER",
+        "event": {
+          "type": "ENTITY_UPDATED",
+          "blueprintIdentifier": "s3Bucket"
+        },
+        "condition": {
+          "type": "JQ",
+          "expressions": [
+            ".diff.before.properties.status == \"pending\"",
+            ".diff.after.properties.status == \"ready\""
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "identifier": "dispatch_github",
+      "title": "Trigger GitHub S3 Workflow",
+      "config": {
+        "type": "INTEGRATION_ACTION",
+        "installationId": "{{GITHUB_INSTALLATION_ID}}",
+        "integrationActionType": "dispatch_workflow",
+        "integrationActionExecutionProperties": {
+          "org": "{{GITHUB_ORG}}",
+          "repo": "{{GITHUB_REPO}}",
+          "workflow": "provision-s3-bucket.yml",
+          "ref": "{{ .outputs.trigger.diff.before.properties.gitRef }}",
+          "reportWorkflowStatus": true,
+          "workflowInputs": {
+            "bucket_name": "{{ .outputs.trigger.diff.before.properties.bucketName }}",
+            "environment": "{{ .outputs.trigger.diff.before.properties.environment }}",
+            "port_run_id": "{{ .outputs.trigger.diff.before.properties.portRunId }}"
+          }
+        }
+      }
+    }
+  ],
+  "connections": [
+    {
+      "sourceIdentifier": "trigger",
+      "targetIdentifier": "dispatch_github"
+    }
+  ]
+}

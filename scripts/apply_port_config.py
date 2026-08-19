@@ -24,13 +24,15 @@ ENV_OVERRIDE_KEYS = {
     "AWS_REGION",
     "TFC_WORKSPACE",
     "GIT_REF_DEFAULT",
-    "FEATURE_GIT_REFS",
 }
 
 ALL_RESOURCES = ("blueprints", "actions", "automations", "workflows")
 GITHUB_MODES = ("legacy", "ocean")
 # Ocean-only workflows skipped in legacy mode (Sunset app). Mixed workflows may include github-ocean nodes.
-LEGACY_SKIP_WORKFLOW_FILES = frozenset({"provision-ec2-after-approval.json"})
+LEGACY_SKIP_WORKFLOW_FILES = frozenset({
+    "provision-ec2-after-approval.json",
+    "provision-s3-after-ready.json",
+})
 
 
 def load_config(config_path: Path) -> dict[str, str]:
@@ -46,27 +48,6 @@ def load_config(config_path: Path) -> dict[str, str]:
     return values
 
 
-def build_git_ref_enum(variables: dict[str, str]) -> str:
-    """Build JSON array for Port form git branch enum from config.env."""
-    default_ref = (
-        os.environ.get("GIT_REF_DEFAULT")
-        or variables.get("GIT_REF_DEFAULT")
-        or variables.get("GITHUB_WORKFLOW_REF")
-        or "dev"
-    ).strip()
-    feature_refs_raw = os.environ.get("FEATURE_GIT_REFS", variables.get("FEATURE_GIT_REFS", ""))
-    refs: list[str] = []
-    if default_ref:
-        refs.append(default_ref)
-    for part in feature_refs_raw.split(","):
-        ref = part.strip()
-        if ref and ref not in refs:
-            refs.append(ref)
-    if not refs:
-        refs.append("dev")
-    return json.dumps(refs)
-
-
 def build_variables(config_path: Path) -> dict[str, str]:
     """Load config.env first, then allow environment variable overrides."""
     variables = load_config(config_path)
@@ -74,7 +55,6 @@ def build_variables(config_path: Path) -> dict[str, str]:
         env_value = os.environ.get(key)
         if env_value:
             variables[key] = env_value
-    variables["GIT_REF_ENUM"] = build_git_ref_enum(variables)
     if not variables.get("GIT_REF_DEFAULT"):
         variables["GIT_REF_DEFAULT"] = (
             os.environ.get("GIT_REF_DEFAULT")
@@ -141,6 +121,17 @@ def resolve_installation_id(variables: dict[str, str]) -> str:
     return os.environ.get("GITHUB_INSTALLATION_ID", "").strip()
 
 
+def is_port_runtime_template(value: object) -> bool:
+    """True for Port event/JQ templates (e.g. {{ .event.diff.before.properties.gitRef }})."""
+    if not isinstance(value, str):
+        return False
+    stripped = value.strip()
+    if not stripped.startswith("{{") or not stripped.endswith("}}"):
+        return False
+    inner = stripped[2:-2].strip()
+    return inner.startswith(".") or ".event." in inner or ".diff." in inner
+
+
 def prepare_integration_automation_payload(payload: dict, variables: dict[str, str]) -> dict:
     """Hoist GitHub dispatch ref to top-level execution properties for legacy Sunset app."""
     invocation = payload.get("invocationMethod")
@@ -155,7 +146,8 @@ def prepare_integration_automation_payload(payload: dict, variables: dict[str, s
     workflow_inputs = dict(props.get("workflowInputs") or {})
 
     ref = props.get("ref") or workflow_inputs.pop("ref", None)
-    if not isinstance(ref, str) or not ref.strip():
+    workflow_inputs.pop("ref", None)
+    if (not isinstance(ref, str) or not ref.strip()) and not is_port_runtime_template(ref):
         ref = (
             variables.get("GITHUB_WORKFLOW_REF")
             or variables.get("GIT_REF_DEFAULT")
@@ -166,6 +158,30 @@ def prepare_integration_automation_payload(payload: dict, variables: dict[str, s
     props["workflowInputs"] = workflow_inputs
     invocation["integrationActionExecutionProperties"] = props
     payload["invocationMethod"] = invocation
+    return payload
+
+
+def prepare_workflow_integration_node(config: dict, variables: dict[str, str]) -> dict:
+    """Hoist GitHub dispatch ref for INTEGRATION_ACTION nodes inside Port workflows."""
+    if config.get("type") != "INTEGRATION_ACTION":
+        return config
+    if config.get("integrationActionType") != "dispatch_workflow":
+        return config
+    wrapped = prepare_integration_automation_payload({"invocationMethod": config}, variables)
+    return wrapped["invocationMethod"]
+
+
+def prepare_workflow_payload(payload: dict, variables: dict[str, str]) -> dict:
+    nodes = payload.get("nodes")
+    if not isinstance(nodes, list):
+        return payload
+    for node in nodes:
+        if not isinstance(node, dict):
+            continue
+        config = node.get("config")
+        if not isinstance(config, dict):
+            continue
+        node["config"] = prepare_workflow_integration_node(config, variables)
     return payload
 
 
@@ -328,6 +344,8 @@ def apply_json_files(
 
         if resource_label in {"action", "automation"}:
             payload = prepare_action_payload(payload, variables)
+        elif resource_label == "workflow":
+            payload = prepare_workflow_payload(payload, variables)
 
         identifier = payload.get("identifier")
         if not identifier:

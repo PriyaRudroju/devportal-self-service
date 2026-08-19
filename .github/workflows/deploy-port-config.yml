@@ -24,15 +24,8 @@ jobs:
           echo "API_GATEWAY_URL=${API_GATEWAY_URL:-}" >> "$GITHUB_ENV"
           echo "GITHUB_INTEGRATION_MODE=${GITHUB_INTEGRATION_MODE:-legacy}" >> "$GITHUB_ENV"
 
-      - name: Inject feature branch git ref for Port form
-        run: |
-          BRANCH="${GITHUB_REF_NAME}"
-          if [[ "$BRANCH" == feature/* ]]; then
-            echo "FEATURE_GIT_REFS=${BRANCH}" >> "$GITHUB_ENV"
-            echo "Injected FEATURE_GIT_REFS=${BRANCH}"
-          else
-            echo "FEATURE_GIT_REFS not injected (branch=${BRANCH})"
-          fi
+      - name: Verify S3 automation GitHub ref template (repo)
+        run: python scripts/verify_s3_github_ref.py
 
       - name: Apply Port configuration
         env:
@@ -47,10 +40,23 @@ jobs:
           AWS_REGION: us-east-2
         run: python scripts/apply_port_config.py --env dev --github-mode legacy
 
+      - name: Verify live Port automation GitHub ref
+        continue-on-error: true
+        id: verify_live
+        env:
+          PORT_CLIENT_ID: ${{ secrets.PORT_CLIENT_ID }}
+          PORT_CLIENT_SECRET: ${{ secrets.PORT_CLIENT_SECRET }}
+          PORT_API_URL: https://api.port.io
+        run: python scripts/verify_s3_github_ref.py --check-live
+
+      - name: Warn if live Port ref could not be verified
+        if: steps.verify_live.outcome != 'success'
+        run: |
+          echo "::warning::Live Port automation ref could not be verified via GET API — apply step succeeded."
+
       - name: Summary
         run: |
           echo "Applied Port config for: dev (branch ${GITHUB_REF_NAME})"
           echo "GIT_REF_DEFAULT: ${GIT_REF_DEFAULT:-dev}"
-          echo "FEATURE_GIT_REFS: ${FEATURE_GIT_REFS:-<empty>}"
           echo "TFC workspace: ${TFC_WORKSPACE:-not set}"
           echo "API Gateway: ${API_GATEWAY_URL:-not set}"
