@@ -52,7 +52,7 @@ jobs:
       - name: Warn if live Port ref could not be verified
         if: steps.verify_live.outcome != 'success'
         run: |
-          echo "::warning::Live Port automation ref could not be verified via GET API — apply step succeeded; E2E will validate dispatch."
+          echo "::warning::Live Port automation ref could not be verified via GET API — apply step succeeded."
 
       - name: Summary
         run: |
