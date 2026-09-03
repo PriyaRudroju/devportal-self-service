@@ -6,9 +6,55 @@
 
 The Home page in Port **is already a dashboard**. We do not need a new product. We rearrange widgets on `$home`, then add a couple of catalog dashboards later if we want role-specific views.
 
+**Working layout (widget inventory):**
+
 ![Landing dashboard wireframe](assets/port-landing-dashboard-wireframe.png)
 
-> Numbers in the mock are illustrative. Live tiles will count real catalog entities.
+**Recommended client look (use this in the review):**
+
+![Executive Home](assets/port-home-executive.png)
+
+> Numbers in the mocks are illustrative. Live tiles will count real catalog entities. Visual styling is the target; Port widgets will be slightly more compact than these mocks.
+
+---
+
+## 0. Client-ready options (pick one Home, optional extra pages)
+
+Show the overview slide first, then the recommended Home. Do not present five competing Homes — present **one recommended landing page** and two optional pages.
+
+![Three-page overview](assets/port-dashboard-options-overview.png)
+
+| Option | File | Who it is for | Recommend for Sept 11? |
+|---|---|---|---|
+| **A. Executive Home** | `assets/port-home-executive.png` | Everyone who opens Port | **Yes — this is v1** |
+| **B. Platform operations** | `assets/port-platform-ops.png` | Cloud / platform engineers | Optional second page if they want it before the 11th |
+| **C. Plan my day** | `assets/port-engineering-work.png` | Developers / app teams | Later — Port already has this page; restyle it after Home |
+
+### Option A — Executive Home (recommended)
+
+Navy + teal, more whitespace, fewer widgets than the first wireframe. Same content, calmer presentation:
+
+- 6 quick links (Hub, Plan my day, Scorecards, EC2, Jira, GitHub)
+- 4 KPI tiles with a colored left edge (pending, failed runs, open problems, active EC2)
+- Donut: requests by status
+- Table: needs attention
+- Personal lists at the **bottom** so empty states do not dominate
+
+This is the one to put on the projector. It looks like a finished healthcare IT product, not a demo.
+
+### Option B — Platform operations (optional page)
+
+![Platform operations](assets/port-platform-ops.png)
+
+Separate catalog dashboard, not a replacement for Home. Environment filter, AWS counts, GitHub run chart, resource mix, failed provision table, TFC/GitHub runs, outlined actions (Create EC2 / S3, open AWS, open TFC). Build this only if they explicitly want a platform page by the 11th.
+
+### Option C — Plan my day (developer page)
+
+![Plan my day](assets/port-engineering-work.png)
+
+Personal work: assigned Jira, open issues, failed checks, deployments this week, a few request shortcuts. Port already has Plan my day in the org nav. Do not rebuild it for v1; link to it from Home.
+
+**If they ask “which looks most professional?”:** Option A. The first wireframe is the inventory of widgets; Option A is how those widgets should feel.
 
 ---
 

@@ -13,7 +13,7 @@ Print or screenshare in this order. Do not start with catalog tables — start w
 
 1. Open Port Home in BannerHealth-Dev so you can show the **current** page (setup links, empty My entities, broken action).
 2. Open Self-Service Hub so they remember create/delete already lives there.
-3. Have this wireframe on screen: `docs/landing-dashboard/assets/port-landing-dashboard-wireframe.png`.
+3. Have **Option A** ready: `docs/landing-dashboard/assets/port-home-executive.png`. Keep the overview slide and the first wireframe in reserve.
 4. Have Builder → Data model ready if they ask "which table is that?"
 5. Know the date: **Home v1 in QA by the 11th** if we lock design today. Relationships and team-scoped filters can trail.
 
@@ -50,9 +50,11 @@ Do **not** walk the whole left sidebar. One sentence is enough: "The data is alr
 
 ---
 
-## Step 3 — Show the wireframe top to bottom (8 minutes)
+## Step 3 — Show the recommended Home (8 minutes)
 
-Open the wireframe image. Walk **rows**, not random widgets. Pause after each row for "any change?"
+Open **Option A** (`port-home-executive.png`). Walk **rows**, not random widgets. Pause after each row for "any change?"
+
+If they want the full widget list, the original wireframe is the inventory; Option A is the client look. If they ask for more designs, show the overview slide, then Platform ops and Plan my day. Recommend: Home = Option A, extra pages optional.
 
 ### Row 1 — Quick Links + welcome
 
