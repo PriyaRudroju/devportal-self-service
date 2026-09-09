@@ -7,7 +7,7 @@ Do **not** add `port-configs/pages/home.json` in `port_orchestration_repo` (that
 | Copy these files into | Path in that repo |
 |---|---|
 | [`tfc_port_configuration/pages-home.tf`](tfc_port_configuration/pages-home.tf) | **root**, next to `blueprints-github.tf` |
-| [`tfc_port_configuration/home-preview-OPEN-THIS.html`](tfc_port_configuration/home-preview-OPEN-THIS.html) | optional; double-click for sample Home (no Python server) |
+| [`tfc_port_configuration/REFERENCE-DASHBOARD.html`](tfc_port_configuration/REFERENCE-DASHBOARD.html) | optional; double-click locked Home canvas (same file as `home-preview-OPEN-THIS.html`) |
 | [`tfc_port_configuration/IDENTIFIERS.md`](tfc_port_configuration/IDENTIFIERS.md) | optional, for the PR description |
 | [`tfc_port_configuration/APPLY.md`](tfc_port_configuration/APPLY.md) | optional runbook |
 

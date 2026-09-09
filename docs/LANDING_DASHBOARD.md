@@ -22,7 +22,7 @@ Pages are **opt-in** in this demo repo. Default `apply_port_config.py` still app
 
 ## Local preview
 
-[`dashboard/`](../dashboard/) is a **sample-data** stand-in of the Home canvas (provisioned EC2/S3, failed runs, completed Jira). After the pies: Quick Actions + Recently viewed only. No catalog tables. It does not apply to Port. Sidebar folders match live BannerHealth Dev and are not managed by `$home`.
+Open [`dashboard/REFERENCE-DASHBOARD.html`](../dashboard/REFERENCE-DASHBOARD.html) (or Raw on GitHub) for the locked Home canvas. Sample data; after the pies: Quick Actions + Recently viewed only. No catalog tables. Sidebar folders match live BannerHealth Dev and are not managed by `$home`.
 
 ```bash
 cd dashboard

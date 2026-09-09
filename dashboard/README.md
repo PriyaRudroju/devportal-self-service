@@ -2,15 +2,14 @@
 
 This is **not** live Port. The cloud agent’s `http://localhost:4173` only works on **that** VM, not on your laptop.
 
-## Easiest: no server
+## Reference dashboard (open this)
 
-1. Pull this repo / this branch (`cursor/landing-dashboard-98a0`).
-2. Double-click **`dashboard/OPEN-THIS.html`**.
-3. If the file is in `tfc_port_configuration`, use **`home-preview-OPEN-THIS.html`** (copy from `dropin/tfc_port_configuration/`).
+Locked Home canvas: Quick view, four KPIs, three pies, then **Quick Actions + Recently viewed** only.
 
-GitHub: download  
-https://github.com/PriyaRudroju/devportal-self-service/blob/cursor/landing-dashboard-98a0/dashboard/OPEN-THIS.html  
-→ **Raw** → Save As → open in Chrome/Edge.
+1. Download **Raw** [`dashboard/REFERENCE-DASHBOARD.html`](https://github.com/PriyaRudroju/devportal-self-service/blob/cursor/landing-dashboard-98a0/dashboard/REFERENCE-DASHBOARD.html)
+2. Save As → open in Chrome/Edge (double-click; no Python).
+
+Same file: [`OPEN-THIS.html`](https://github.com/PriyaRudroju/devportal-self-service/blob/cursor/landing-dashboard-98a0/dashboard/OPEN-THIS.html). In `tfc_port_configuration`, copy `dropin/tfc_port_configuration/REFERENCE-DASHBOARD.html`.
 
 ## Optional: Python server (your PC)
 

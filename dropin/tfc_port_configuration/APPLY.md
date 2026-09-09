@@ -26,6 +26,7 @@ After the three pie charts, the last layout row must be exactly:
 Do not add my-entities, recently-used-actions, owning-teams filters, or any other tables.
 Keep Quick view links, the four number charts, and the three pies.
 Copy widget JSON from PriyaRudroju/devportal-self-service dropin/tfc_port_configuration/pages-home.tf if unsure.
+Match the canvas in dropin/tfc_port_configuration/REFERENCE-DASHBOARD.html (Quick Actions beside Recently viewed; no catalog tables).
 Do not put # comments inside jsonencode.
 ```
 

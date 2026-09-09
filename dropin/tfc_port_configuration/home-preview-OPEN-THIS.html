@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BannerHealth Home preview (sample data)</title>
+  <title>BannerHealth Home — reference dashboard</title>
   <style>
 :root {
-  --bg: #f6f7f9;
+  --bg: #f4f6f8;
   --card: #fff;
   --text: #17181c;
   --muted: #6b7280;
-  --line: #eceef2;
+  --line: #e6e8ee;
   --blue: #2f6bff;
   --green: #067a57;
   --amber: #b45309;
@@ -39,204 +39,121 @@ body {
   gap: 4px;
 }
 .rail-btn {
-  width: 32px;
-  height: 32px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: inherit;
-  cursor: default;
-  font-size: 14px;
-  position: relative;
+  width: 32px; height: 32px; border: 0; border-radius: 8px;
+  background: transparent; color: inherit; font-size: 14px; position: relative;
 }
 .rail-btn.active { background: #fff; color: #111; }
 .rail-spacer { flex: 1; }
 .bell span {
-  position: absolute;
-  top: -4px;
-  right: -6px;
-  background: #e11d48;
-  color: #fff;
-  font-size: 8px;
-  font-weight: 700;
-  padding: 1px 3px;
-  border-radius: 8px;
+  position: absolute; top: -4px; right: -6px; background: #e11d48; color: #fff;
+  font-size: 8px; font-weight: 700; padding: 1px 3px; border-radius: 8px;
 }
-.avatar {
-  background: #ea580c;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-}
+.avatar { background: #ea580c; color: #fff; font-size: 10px; font-weight: 700; }
 .sidebar {
-  background: #fff;
-  border-right: 1px solid var(--line);
-  padding: 12px 10px 32px;
-  overflow: auto;
+  background: #fff; border-right: 1px solid var(--line); padding: 12px 10px 32px; overflow: auto;
 }
 .org-switch {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 650;
-  font-size: 13px;
-  margin-bottom: 10px;
+  display: flex; align-items: center; gap: 4px; font-weight: 650; font-size: 13px; margin-bottom: 10px;
 }
-.org-switch select {
-  border: 0;
-  font-weight: 650;
-  font-size: 13px;
-  width: 100%;
-  background: transparent;
-  cursor: pointer;
-}
+.org-switch select { border: 0; font-weight: 650; font-size: 13px; width: 100%; background: transparent; }
 .org-caret { color: var(--muted); font-size: 11px; }
 .search {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 7px 10px;
-  background: #fafbfc;
-  margin-bottom: 10px;
+  width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px;
+  background: #fafbfc; margin-bottom: 10px;
 }
-.search.wide { max-width: 380px; margin: 0; }
+.search.wide { max-width: 360px; margin: 0; }
 .nav-label {
-  font-size: 11px;
-  color: var(--muted);
-  font-weight: 650;
-  margin: 14px 6px 6px;
-  display: flex;
-  justify-content: space-between;
+  font-size: 11px; color: var(--muted); font-weight: 650; margin: 14px 6px 6px;
+  display: flex; justify-content: space-between;
 }
-.nav-tools { font-weight: 500; }
 .nav, summary {
-  width: 100%;
-  text-align: left;
-  border: 0;
-  background: transparent;
-  padding: 7px 8px;
-  border-radius: 8px;
-  font-size: 13px;
-  cursor: pointer;
+  width: 100%; text-align: left; border: 0; background: transparent;
+  padding: 7px 8px; border-radius: 8px; font-size: 13px;
 }
-.nav.home.active, .nav.active, .nav:hover, summary:hover { background: #eaf0ff; color: #1d4ed8; }
+.nav.home.active, .nav:hover, summary:hover { background: #eaf0ff; color: #1d4ed8; }
 .nav.nested { padding-left: 22px; font-size: 12px; color: #374151; }
 .nav.muted { color: var(--muted); }
 details { margin: 2px 0; }
-summary {
-  list-style: none;
-  font-size: 13px;
-}
+summary { list-style: none; font-size: 13px; }
 summary::-webkit-details-marker { display: none; }
 summary::before { content: "▸ "; color: var(--muted); }
 details[open] > summary::before { content: "▾ "; }
-main { padding: 16px 24px 56px; overflow: auto; }
-.sample-banner {
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  color: #9a3412;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-bottom: 14px;
+.chrome-note {
+  margin: 10px 6px 0; font-size: 10px; color: var(--muted); line-height: 1.4;
 }
-.top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 14px;
+main { padding: 16px 24px 48px; overflow: auto; }
+.spec {
+  background: #111827; color: #f9fafb; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
 }
+.spec h2 { margin: 0 0 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.spec p { margin: 0; font-size: 13px; line-height: 1.45; color: #e5e7eb; }
+.spec .keep { color: #86efac; font-weight: 650; }
+.spec .drop { color: #fca5a5; font-weight: 650; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }
 .top h1 { font-size: 26px; font-weight: 650; margin: 0; letter-spacing: -0.03em; }
-.quick-links, .kpis, .pies { margin-bottom: 14px; }
-.actions-and-viewed {
-  display: grid;
-  grid-template-columns: 2fr 3fr;
-  gap: 12px;
-  margin-bottom: 14px;
-  align-items: start;
+.row-label {
+  font-size: 11px; font-weight: 700; color: #6b7280; letter-spacing: 0.04em;
+  text-transform: uppercase; margin: 0 0 8px;
 }
-.actions, .recent { margin-bottom: 0; }
-.recent .row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--line);
-  font-size: 13px;
-}
-.recent .row:last-child { border-bottom: 0; }
-.recent .type { color: var(--muted); font-size: 12px; white-space: nowrap; }
-.quick-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.chip {
-  border: 1px solid var(--line);
-  background: #fff;
-  border-radius: 999px;
-  padding: 8px 12px;
-  font-size: 13px;
-  color: #1d4ed8;
-  font-weight: 600;
-  cursor: pointer;
-}
+.quick-links, .kpis, .pies, .actions-and-viewed { margin-bottom: 16px; }
 .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.pies { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.actions-and-viewed {
+  display: grid; grid-template-columns: 5fr 7fr; gap: 12px; align-items: stretch;
+}
 .kpi, .card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
 }
 .kpi { padding: 14px 16px; border-top: 3px solid #c9d4e8; }
-.kpi.warn { border-top-color: #f59e0b; }
-.kpi.bad { border-top-color: #ef4444; }
 .kpi.good { border-top-color: #10b981; }
+.kpi.bad { border-top-color: #ef4444; }
 .kpi.info { border-top-color: var(--blue); }
 .kpi .label { font-size: 12px; color: var(--muted); font-weight: 600; }
 .kpi .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
 .kpi .value { font-size: 30px; font-weight: 700; margin-top: 6px; letter-spacing: -0.04em; }
-.pies { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.kpi .type { font-size: 10px; color: #9ca3af; margin-top: 8px; }
 .card h3 { margin: 0; font-size: 13px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
 .card .sub { font-size: 11px; color: var(--muted); font-weight: 500; margin: 0; padding: 0 14px 10px; border-bottom: 1px solid var(--line); }
 .card-b { padding: 14px; }
+.quick-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 8px 12px; font-size: 13px; color: #1d4ed8; font-weight: 600;
+}
 .pie-wrap { display: flex; align-items: center; gap: 16px; }
 .pie { width: 112px; height: 112px; border-radius: 50%; flex: 0 0 auto; }
 .legend { font-size: 12px; display: grid; gap: 6px; }
 .swatch { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
-.action-row { display: flex; flex-wrap: wrap; gap: 10px; }
-.btn {
-  border: 0;
-  background: var(--blue);
-  color: #fff;
-  border-radius: 8px;
-  padding: 9px 12px;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
+.action-list { display: grid; gap: 8px; }
+.action {
+  display: flex; align-items: center; gap: 10px; border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 12px; font-size: 13px; font-weight: 600;
 }
-.tables-stack { display: grid; gap: 14px; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); }
-th { color: var(--muted); font-size: 11px; }
-.badge { border-radius: 999px; padding: 2px 8px; font-size: 11px; font-weight: 650; }
-.ok { background: #e4f7ee; color: var(--green); }
-.warn { background: #fff4df; color: var(--amber); }
-.bad { background: #fde8e8; color: var(--red); }
-.info { background: #eaf0ff; color: #1d4ed8; }
-.empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
+.bolt {
+  width: 28px; height: 28px; border-radius: 8px; background: #eaf0ff; color: var(--blue);
+  display: grid; place-items: center; font-size: 14px; flex: 0 0 auto;
+}
+.recent .row {
+  display: grid; grid-template-columns: 1fr auto; gap: 8px 12px;
+  padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px;
+}
+.recent .row:last-child { border-bottom: 0; }
+.recent .type { color: var(--muted); font-size: 12px; }
+.recent .when { color: #9ca3af; font-size: 11px; grid-column: 1 / -1; }
+.excluded {
+  border: 1px dashed #fca5a5; background: #fff7f7; border-radius: 10px; padding: 12px 14px;
+}
+.excluded h3 { margin: 0 0 6px; font-size: 12px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.04em; }
+.excluded ul { margin: 0; padding-left: 18px; color: #7f1d1d; font-size: 13px; line-height: 1.5; }
 @media (max-width: 1200px) {
   .kpis, .pies { grid-template-columns: 1fr 1fr; }
   .actions-and-viewed { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
-  .rail { display: none; }
-  .kpis, .pies, .actions-and-viewed { grid-template-columns: 1fr; }
+  .rail, .sidebar { display: none; }
+  .kpis, .pies { grid-template-columns: 1fr; }
 }
-
   </style>
 </head>
 <body>
@@ -258,21 +175,15 @@ th { color: var(--muted); font-size: 11px; }
     <aside class="sidebar">
       <label class="org-switch">
         <span class="org-caret">▾</span>
-        <select id="orgSwitch" aria-label="Port organization">
-          <option value="dev">BannerHealth - Dev</option>
-          <option value="qa">BannerHealth - QA</option>
-          <option value="prod">BannerHealth - Prod</option>
+        <select aria-label="Port organization">
+          <option>BannerHealth - Dev</option>
+          <option>BannerHealth - QA</option>
+          <option>BannerHealth - Prod</option>
         </select>
       </label>
       <input class="search" placeholder="Search pages" />
-
       <button class="nav home active">Home</button>
-
-      <div class="nav-label">
-        Organization
-        <span class="nav-tools">▾ +</span>
-      </div>
-
+      <div class="nav-label">Organization <span>▾ +</span></div>
       <details open>
         <summary>Manage service catalog</summary>
         <button class="nav nested">Services</button>
@@ -300,223 +211,155 @@ th { color: var(--muted); font-size: 11px; }
       </details>
       <details>
         <summary>Catalog tables</summary>
-        <button class="nav nested" data-table="jira">Self-Service Feedback</button>
+        <button class="nav nested">Self-Service Feedback</button>
         <button class="nav nested">Deployments</button>
-        <button class="nav nested" data-table="runs">GitHub Workflow Runs</button>
+        <button class="nav nested">GitHub Workflow Runs</button>
         <button class="nav nested">GitHub Workflows</button>
-        <button class="nav nested" data-table="ec2">Self Service Infra Resources</button>
+        <button class="nav nested">Self Service Infra Resources</button>
         <button class="nav nested">AWS AMIs</button>
         <button class="nav nested">AWS Security Groups</button>
         <button class="nav nested">AWS Subnets</button>
-        <button class="nav nested" data-table="ec2">Terraform-managed EC2</button>
+        <button class="nav nested">Terraform-managed EC2</button>
         <button class="nav nested">Classic Load Balancers</button>
         <button class="nav nested">AWS KMS Keys</button>
         <button class="nav nested">Jira Teams</button>
       </details>
-
       <div class="nav-label">Private</div>
       <button class="nav muted">+ Add your private page</button>
+      <p class="chrome-note">Left rail + folders + org switcher are Port chrome. Do not Terraform them on $home.</p>
     </aside>
 
     <main>
-      <div class="sample-banner">
-        Sample data only — not live BannerHealth. After the pies: Quick Actions + Recently viewed only. No Provisioned EC2/S3, failed-run, or Jira tables.
+      <div class="spec">
+        <h2>Reference — BannerHealth $home</h2>
+        <p>
+          Sample numbers only. Locked canvas:
+          <span class="keep">Quick view → 4 KPIs → 3 pies → Quick Actions + Recently viewed.</span>
+          <span class="drop">No catalog tables under actions.</span>
+        </p>
       </div>
+
       <header class="top">
-        <h1 id="greeting">Good afternoon</h1>
-        <input class="search wide" id="globalSearch" placeholder="Search" />
+        <h1>Good afternoon, Vishwak</h1>
+        <input class="search wide" placeholder="Search" />
       </header>
 
-      <section class="quick-links" id="quickLinks"></section>
-      <section class="kpis" id="kpis"></section>
-      <section class="pies" id="pies"></section>
-      <section class="actions-and-viewed" id="actionsAndViewed">
-        <section class="actions" id="actions"></section>
-        <section class="recent" id="recentlyViewed"></section>
+      <p class="row-label">Row 1 · links-widget</p>
+      <section class="quick-links">
+        <article class="card">
+          <h3>Quick view</h3>
+          <p class="sub">Self-service hub · Self Service Infra Resources · GitHub Workflow Runs · Users</p>
+          <div class="card-b quick-chips">
+            <span class="chip">Self-service hub</span>
+            <span class="chip">Self Service Infra Resources</span>
+            <span class="chip">GitHub Workflow Runs</span>
+            <span class="chip">Users and teams</span>
+          </div>
+        </article>
       </section>
+
+      <p class="row-label">Row 2 · entities-number-chart · counts only, not tables</p>
+      <section class="kpis">
+        <div class="kpi good">
+          <div class="label">Provisioned EC2</div>
+          <div class="hint">resource = ec2 · provisioning_status = provisioned</div>
+          <div class="value">3</div>
+          <div class="type">KPI count · not a resource table</div>
+        </div>
+        <div class="kpi good">
+          <div class="label">Provisioned S3</div>
+          <div class="hint">resource = s3 · provisioning_status = provisioned</div>
+          <div class="value">2</div>
+          <div class="type">KPI count · not a resource table</div>
+        </div>
+        <div class="kpi bad">
+          <div class="label">Failed Workflow Runs</div>
+          <div class="hint">conclusion = failure</div>
+          <div class="value">2</div>
+          <div class="type">KPI count · not a run table</div>
+        </div>
+        <div class="kpi info">
+          <div class="label">Completed Tasks</div>
+          <div class="hint">Jira status = Done</div>
+          <div class="value">3</div>
+          <div class="type">KPI count · not a Jira table</div>
+        </div>
+      </section>
+
+      <p class="row-label">Row 3 · entities-pie-chart · all statuses</p>
+      <section class="pies">
+        <article class="card">
+          <h3>EC2 by Status</h3>
+          <p class="sub">selfServiceInfraResources · resource = ec2</p>
+          <div class="card-b pie-wrap">
+            <div class="pie" style="background:conic-gradient(#10b981 0deg 216deg,#f59e0b 216deg 288deg,#ef4444 288deg 360deg)"></div>
+            <div class="legend">
+              <div><span class="swatch" style="background:#10b981"></span>provisioned · 3</div>
+              <div><span class="swatch" style="background:#f59e0b"></span>pending · 1</div>
+              <div><span class="swatch" style="background:#ef4444"></span>failed · 1</div>
+            </div>
+          </div>
+        </article>
+        <article class="card">
+          <h3>S3 by Status</h3>
+          <p class="sub">selfServiceInfraResources · resource = s3</p>
+          <div class="card-b pie-wrap">
+            <div class="pie" style="background:conic-gradient(#10b981 0deg 180deg,#f59e0b 180deg 270deg,#ef4444 270deg 360deg)"></div>
+            <div class="legend">
+              <div><span class="swatch" style="background:#10b981"></span>provisioned · 2</div>
+              <div><span class="swatch" style="background:#f59e0b"></span>pending · 1</div>
+              <div><span class="swatch" style="background:#ef4444"></span>failed · 1</div>
+            </div>
+          </div>
+        </article>
+        <article class="card">
+          <h3>Workflow Runs by Conclusion</h3>
+          <p class="sub">githubWorkflowRun · conclusion</p>
+          <div class="card-b pie-wrap">
+            <div class="pie" style="background:conic-gradient(#10b981 0deg 180deg,#2f6bff 180deg 240deg,#ef4444 240deg 360deg)"></div>
+            <div class="legend">
+              <div><span class="swatch" style="background:#10b981"></span>success · 3</div>
+              <div><span class="swatch" style="background:#2f6bff"></span>in_progress · 1</div>
+              <div><span class="swatch" style="background:#ef4444"></span>failure · 2</div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <p class="row-label">Row 4 · action-card-widget (size 5) + recently-viewed-entities (size 7)</p>
+      <section class="actions-and-viewed">
+        <article class="card">
+          <h3>Quick Actions</h3>
+          <p class="sub">Three buttons only — Create EC2 / Create S3 / Submit Feedback</p>
+          <div class="card-b action-list">
+            <div class="action"><span class="bolt">⚡</span>Create EC2 Instance</div>
+            <div class="action"><span class="bolt">⚡</span>Create S3 Bucket</div>
+            <div class="action"><span class="bolt">⚡</span>Submit Feedback</div>
+          </div>
+        </article>
+        <article class="card recent">
+          <h3>Recently viewed entities</h3>
+          <p class="sub">Port personal widget — each user sees their own history</p>
+          <div class="card-b">
+            <div class="row"><span>idp-demo-bastion</span><span class="type">Self Service Infra Resources</span><span class="when">viewed today</span></div>
+            <div class="row"><span>bh-idp-artifacts-dev</span><span class="type">Self Service Infra Resources</span><span class="when">viewed today</span></div>
+            <div class="row"><span>change-ec2-instance.yml #1024</span><span class="type">GitHub Workflow Run</span><span class="when">viewed yesterday</span></div>
+            <div class="row"><span>IDP-73182</span><span class="type">Jira Issue</span><span class="when">viewed yesterday</span></div>
+            <div class="row"><span>S3 Bucket Provisioning</span><span class="type">Service Offering</span><span class="when">viewed 2 days ago</span></div>
+          </div>
+        </article>
+      </section>
+
+      <div class="excluded">
+        <h3>Not on Home — delete if you still see these</h3>
+        <ul>
+          <li>Provisioned EC2 Resources (table · green “provisioned”)</li>
+          <li>Provisioned S3 Resources (table · green “provisioned”)</li>
+          <li>Recent Failed Workflow Runs (table · red “failure”)</li>
+          <li>Recently Completed Tasks (table · green “Done”)</li>
+        </ul>
+      </div>
     </main>
   </div>
-  <script>
-const DATA = {
-  user: "Vishwak",
-  infra: [
-    { resource: "ec2", resource_name: "idp-demo-bastion", aws_region: "us-west-2", environment: "dev", requestor: "priya", provisioning_status: "provisioned", created_at: "2026-09-08 09:14" },
-    { resource: "ec2", resource_name: "claims-worker-qa", aws_region: "us-east-1", environment: "qa", requestor: "alex", provisioning_status: "provisioned", created_at: "2026-09-08 11:02" },
-    { resource: "ec2", resource_name: "patient-cache-dev", aws_region: "us-west-2", environment: "dev", requestor: "alex", provisioning_status: "provisioned", created_at: "2026-09-07 16:40" },
-    { resource: "ec2", resource_name: "analytics-scratch", aws_region: "us-east-1", environment: "dev", requestor: "jordan", provisioning_status: "pending", created_at: "2026-09-06 08:21" },
-    { resource: "ec2", resource_name: "tfc-runner-prod", aws_region: "us-west-2", environment: "prod", requestor: "priya", provisioning_status: "failed", created_at: "2026-09-05 13:55" },
-    { resource: "s3", resource_name: "bh-idp-artifacts-dev", aws_region: "us-west-2", environment: "dev", requestor: "priya", provisioning_status: "provisioned", created_at: "2026-09-07 14:03" },
-    { resource: "s3", resource_name: "bh-claims-logs-qa", aws_region: "us-east-1", environment: "qa", requestor: "alex", provisioning_status: "provisioned", created_at: "2026-09-08 10:18" },
-    { resource: "s3", resource_name: "bh-analytics-raw-prod", aws_region: "us-east-1", environment: "prod", requestor: "jordan", provisioning_status: "pending", created_at: "2026-09-04 09:47" },
-    { resource: "s3", resource_name: "bh-app-backups-dev", aws_region: "us-west-2", environment: "dev", requestor: "alex", provisioning_status: "failed", created_at: "2026-09-03 17:12" },
-  ],
-  runs: [
-    { name: "change-ec2-instance.yml #1024", conclusion: "success", status: "completed", createdAt: "2026-09-08 12:01", link: "github.com/BHGitOps/…" },
-    { name: "change-ec2-instance.yml #1041", conclusion: "in_progress", status: "queued", createdAt: "2026-09-08 12:22", link: "github.com/BHGitOps/…" },
-    { name: "change-ec2-instance.yml #998", conclusion: "success", status: "completed", createdAt: "2026-09-07 18:44", link: "github.com/BHGitOps/…" },
-    { name: "provision-s3-bucket.yml #1033", conclusion: "failure", status: "completed", createdAt: "2026-09-08 08:19", link: "github.com/BHGitOps/…" },
-    { name: "provision-s3-bucket.yml #1011", conclusion: "success", status: "completed", createdAt: "2026-09-06 15:02", link: "github.com/BHGitOps/…" },
-    { name: "terraform-plan.yml #880", conclusion: "failure", status: "completed", createdAt: "2026-09-05 11:36", link: "github.com/BHGitOps/…" },
-  ],
-  jira: [
-    { key: "IDP-73182", issueType: "Story", priority: "High", status: "Done", assignee: "Priya", updated: "2026-09-08" },
-    { key: "IDP-73201", issueType: "Task", priority: "Medium", status: "In Progress", assignee: "Alex", updated: "2026-09-08" },
-    { key: "IDP-73218", issueType: "Story", priority: "Low", status: "To Do", assignee: "Jordan", updated: "2026-09-07" },
-    { key: "IDP-73190", issueType: "Bug", priority: "High", status: "Done", assignee: "Alex", updated: "2026-09-07" },
-    { key: "IDP-73155", issueType: "Task", priority: "Medium", status: "Done", assignee: "Priya", updated: "2026-09-06" },
-  ],
-};
-
-const COLORS = {
-  provisioned: "#10b981",
-  pending: "#f59e0b",
-  failed: "#ef4444",
-  failure: "#ef4444",
-  success: "#10b981",
-  in_progress: "#2f6bff",
-  Done: "#10b981",
-};
-
-function hourGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
-}
-
-function query() {
-  return (document.getElementById("globalSearch").value || "").toLowerCase();
-}
-
-function match(row) {
-  const q = query();
-  if (!q) return true;
-  return JSON.stringify(row).toLowerCase().includes(q);
-}
-
-function counts(list, key) {
-  const out = {};
-  list.forEach((item) => {
-    out[item[key]] = (out[item[key]] || 0) + 1;
-  });
-  return out;
-}
-
-function pie(countsMap) {
-  if (!Object.keys(countsMap).length) {
-    return `<div class="empty">No data for this widget</div>`;
-  }
-  const total = Object.values(countsMap).reduce((a, b) => a + b, 0) || 1;
-  let angle = 0;
-  const stops = [];
-  Object.entries(countsMap).forEach(([label, n]) => {
-    const next = angle + (n / total) * 360;
-    stops.push(`${COLORS[label] || "#cbd5e1"} ${angle}deg ${next}deg`);
-    angle = next;
-  });
-  const legend = Object.entries(countsMap)
-    .map(
-      ([label, n]) =>
-        `<div><span class="swatch" style="background:${COLORS[label] || "#cbd5e1"}"></span>${label} · ${n}</div>`
-    )
-    .join("");
-  return `<div class="pie-wrap"><div class="pie" style="background:conic-gradient(${stops.join(",")})"></div><div class="legend">${legend}</div></div>`;
-}
-
-function render() {
-  const org = document.getElementById("orgSwitch").value;
-  const orgLabel = { dev: "Dev", qa: "QA", prod: "Prod" }[org];
-  document.getElementById("greeting").textContent = `${hourGreeting()}, ${DATA.user}  ·  ${orgLabel} preview`;
-
-  const infra = DATA.infra.filter(match);
-  const runs = DATA.runs.filter(match);
-  const jira = DATA.jira.filter(match);
-  const ec2 = infra.filter((r) => r.resource === "ec2");
-  const s3 = infra.filter((r) => r.resource === "s3");
-  const provisionedEc2 = ec2.filter((r) => r.provisioning_status === "provisioned");
-  const provisionedS3 = s3.filter((r) => r.provisioning_status === "provisioned");
-  const failedRuns = runs.filter((r) => r.conclusion === "failure");
-  const doneJira = jira.filter((r) => r.status === "Done");
-
-  document.getElementById("quickLinks").innerHTML = `
-    <article class="card">
-      <h3>Quick view</h3>
-      <div class="card-b quick-chips">
-        <button class="chip">Self-service hub</button>
-        <button class="chip">Self Service Infra Resources</button>
-        <button class="chip">GitHub Workflow Runs</button>
-        <button class="chip">Users and teams</button>
-      </div>
-    </article>`;
-
-  document.getElementById("kpis").innerHTML = `
-    <div class="kpi good">
-      <div class="label">Provisioned EC2</div>
-      <div class="hint">Active instances · resource = ec2</div>
-      <div class="value">${provisionedEc2.length}</div>
-    </div>
-    <div class="kpi good">
-      <div class="label">Provisioned S3</div>
-      <div class="hint">Active buckets · resource = s3</div>
-      <div class="value">${provisionedS3.length}</div>
-    </div>
-    <div class="kpi bad">
-      <div class="label">Failed Workflow Runs</div>
-      <div class="hint">conclusion = failure</div>
-      <div class="value">${failedRuns.length}</div>
-    </div>
-    <div class="kpi info">
-      <div class="label">Completed Tasks</div>
-      <div class="hint">Jira status = Done</div>
-      <div class="value">${doneJira.length}</div>
-    </div>`;
-
-  document.getElementById("pies").innerHTML = `
-    <article class="card">
-      <h3>EC2 by Status</h3>
-      <p class="sub">Distribution of all EC2 resources</p>
-      <div class="card-b">${pie(counts(ec2, "provisioning_status"))}</div>
-    </article>
-    <article class="card">
-      <h3>S3 by Status</h3>
-      <p class="sub">Distribution of all S3 resources</p>
-      <div class="card-b">${pie(counts(s3, "provisioning_status"))}</div>
-    </article>
-    <article class="card">
-      <h3>Workflow Runs by Conclusion</h3>
-      <p class="sub">Distribution of run conclusions</p>
-      <div class="card-b">${pie(counts(runs, "conclusion"))}</div>
-    </article>`;
-
-  document.getElementById("actions").innerHTML = `
-    <article class="card">
-      <h3>Quick Actions</h3>
-      <p class="sub">Create EC2, Create S3, Submit Feedback</p>
-      <div class="card-b action-row">
-        <button class="btn">Create EC2 Instance</button>
-        <button class="btn">Create S3 Bucket</button>
-        <button class="btn">Submit Feedback</button>
-      </div>
-    </article>`;
-
-  document.getElementById("recentlyViewed").innerHTML = `
-    <article class="card" id="table-viewed">
-      <h3>Recently viewed entities</h3>
-      <p class="sub">Sample rows — live Port shows each user’s own history</p>
-      <div class="card-b">
-        <div class="row"><span>idp-demo-bastion</span><span class="type">Self Service Infra Resources</span></div>
-        <div class="row"><span>bh-idp-artifacts-dev</span><span class="type">Self Service Infra Resources</span></div>
-        <div class="row"><span>change-ec2-instance.yml #1024</span><span class="type">GitHub Workflow Run</span></div>
-        <div class="row"><span>IDP-73182</span><span class="type">Jira Issue</span></div>
-        <div class="row"><span>S3 Bucket Provisioning</span><span class="type">Service Offering</span></div>
-      </div>
-    </article>`;
-}
-
-document.getElementById("orgSwitch").onchange = render;
-document.getElementById("globalSearch").oninput = render;
-render();
-
-  </script>
 </body>
 </html>
