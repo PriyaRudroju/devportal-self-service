@@ -47,5 +47,25 @@
       }
     },
     "required": ["instanceName", "instanceType", "environment"]
+  },
+  "relations": {
+    "service": {
+      "title": "Service",
+      "target": "service",
+      "required": false,
+      "many": false
+    },
+    "owningTeam": {
+      "title": "Owning Team",
+      "target": "_team",
+      "required": false,
+      "many": false
+    },
+    "owner": {
+      "title": "Owner",
+      "target": "_user",
+      "required": false,
+      "many": false
+    }
   }
 }

@@ -1,0 +1,38 @@
+{
+  "identifier": "service",
+  "title": "Service",
+  "icon": "Microservice",
+  "description": "Logical application or platform service that owns infrastructure catalog records.",
+  "schema": {
+    "properties": {
+      "language": {
+        "type": "string",
+        "title": "Language"
+      },
+      "environment": {
+        "type": "string",
+        "title": "Environment",
+        "enum": ["dev", "qa", "prod"]
+      },
+      "repo": {
+        "type": "string",
+        "title": "GitHub Repository"
+      }
+    },
+    "required": ["environment"]
+  },
+  "relations": {
+    "owningTeam": {
+      "title": "Owning Team",
+      "target": "_team",
+      "required": false,
+      "many": false
+    },
+    "owner": {
+      "title": "Owner",
+      "target": "_user",
+      "required": false,
+      "many": false
+    }
+  }
+}

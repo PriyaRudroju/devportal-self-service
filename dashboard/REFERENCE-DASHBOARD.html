@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BannerHealth Home v2 — EC2/S3 pies have no pending</title>
+  <style>
+:root {
+  --bg: #f4f6f8;
+  --card: #fff;
+  --text: #17181c;
+  --muted: #6b7280;
+  --line: #e6e8ee;
+  --blue: #2f6bff;
+  --green: #067a57;
+  --amber: #b45309;
+  --red: #c52626;
+  --rail: #2b2f36;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+.shell {
+  display: grid;
+  grid-template-columns: 48px 268px 1fr;
+  min-height: 100vh;
+}
+.rail {
+  background: var(--rail);
+  color: #d7dbe2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0 16px;
+  gap: 4px;
+}
+.rail-btn {
+  width: 32px; height: 32px; border: 0; border-radius: 8px;
+  background: transparent; color: inherit; font-size: 14px; position: relative;
+}
+.rail-btn.active { background: #fff; color: #111; }
+.rail-spacer { flex: 1; }
+.bell span {
+  position: absolute; top: -4px; right: -6px; background: #e11d48; color: #fff;
+  font-size: 8px; font-weight: 700; padding: 1px 3px; border-radius: 8px;
+}
+.avatar { background: #ea580c; color: #fff; font-size: 10px; font-weight: 700; }
+.sidebar {
+  background: #fff; border-right: 1px solid var(--line); padding: 12px 10px 32px; overflow: auto;
+}
+.org-switch {
+  display: flex; align-items: center; gap: 4px; font-weight: 650; font-size: 13px; margin-bottom: 10px;
+}
+.org-switch select { border: 0; font-weight: 650; font-size: 13px; width: 100%; background: transparent; }
+.org-caret { color: var(--muted); font-size: 11px; }
+.search {
+  width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px;
+  background: #fafbfc; margin-bottom: 10px;
+}
+.search.wide { max-width: 360px; margin: 0; }
+.nav-label {
+  font-size: 11px; color: var(--muted); font-weight: 650; margin: 14px 6px 6px;
+  display: flex; justify-content: space-between;
+}
+.nav, summary {
+  width: 100%; text-align: left; border: 0; background: transparent;
+  padding: 7px 8px; border-radius: 8px; font-size: 13px;
+}
+.nav.home.active, .nav:hover, summary:hover { background: #eaf0ff; color: #1d4ed8; }
+.nav.nested { padding-left: 22px; font-size: 12px; color: #374151; }
+.nav.muted { color: var(--muted); }
+details { margin: 2px 0; }
+summary { list-style: none; font-size: 13px; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "▸ "; color: var(--muted); }
+details[open] > summary::before { content: "▾ "; }
+.chrome-note {
+  margin: 10px 6px 0; font-size: 10px; color: var(--muted); line-height: 1.4;
+}
+main { padding: 16px 24px 48px; overflow: auto; }
+.spec {
+  background: #111827; color: #f9fafb; border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
+}
+.spec h2 { margin: 0 0 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.spec p { margin: 0; font-size: 13px; line-height: 1.45; color: #e5e7eb; }
+.spec .keep { color: #86efac; font-weight: 650; }
+.spec .drop { color: #fca5a5; font-weight: 650; }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }
+.top h1 { font-size: 26px; font-weight: 650; margin: 0; letter-spacing: -0.03em; }
+.row-label {
+  font-size: 11px; font-weight: 700; color: #6b7280; letter-spacing: 0.04em;
+  text-transform: uppercase; margin: 0 0 8px;
+}
+.quick-links, .kpis, .pies, .actions-and-viewed { margin-bottom: 16px; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.pies { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.actions-and-viewed {
+  display: grid; grid-template-columns: 5fr 7fr; gap: 12px; align-items: stretch;
+}
+.kpi, .card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+}
+.kpi { padding: 14px 16px; border-top: 3px solid #c9d4e8; }
+.kpi.good { border-top-color: #10b981; }
+.kpi.bad { border-top-color: #ef4444; }
+.kpi.info { border-top-color: var(--blue); }
+.kpi .label { font-size: 12px; color: var(--muted); font-weight: 600; }
+.kpi .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.kpi .value { font-size: 30px; font-weight: 700; margin-top: 6px; letter-spacing: -0.04em; }
+.kpi .type { font-size: 10px; color: #9ca3af; margin-top: 8px; }
+.card h3 { margin: 0; font-size: 13px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.card .sub { font-size: 11px; color: var(--muted); font-weight: 500; margin: 0; padding: 0 14px 10px; border-bottom: 1px solid var(--line); }
+.card-b { padding: 14px; }
+.quick-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 8px 12px; font-size: 13px; color: #1d4ed8; font-weight: 600;
+}
+.pie-wrap { display: flex; align-items: center; gap: 16px; }
+.pie { width: 112px; height: 112px; border-radius: 50%; flex: 0 0 auto; }
+.legend { font-size: 12px; display: grid; gap: 6px; }
+.swatch { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.action-list { display: grid; gap: 8px; }
+.action {
+  display: flex; align-items: center; gap: 10px; border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 12px; font-size: 13px; font-weight: 600;
+}
+.bolt {
+  width: 28px; height: 28px; border-radius: 8px; background: #eaf0ff; color: var(--blue);
+  display: grid; place-items: center; font-size: 14px; flex: 0 0 auto;
+}
+.recent .row {
+  display: grid; grid-template-columns: 1fr auto; gap: 8px 12px;
+  padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px;
+}
+.recent .row:last-child { border-bottom: 0; }
+.recent .type { color: var(--muted); font-size: 12px; }
+.recent .when { color: #9ca3af; font-size: 11px; grid-column: 1 / -1; }
+.excluded {
+  border: 1px dashed #fca5a5; background: #fff7f7; border-radius: 10px; padding: 12px 14px;
+}
+.excluded h3 { margin: 0 0 6px; font-size: 12px; color: #991b1b; text-transform: uppercase; letter-spacing: 0.04em; }
+.excluded ul { margin: 0; padding-left: 18px; color: #7f1d1d; font-size: 13px; line-height: 1.5; }
+@media (max-width: 1200px) {
+  .kpis, .pies { grid-template-columns: 1fr 1fr; }
+  .actions-and-viewed { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .rail, .sidebar { display: none; }
+  .kpis, .pies { grid-template-columns: 1fr; }
+}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav class="rail" aria-label="Port modules">
+      <button class="rail-btn" title="Search">⌕</button>
+      <button class="rail-btn" title="Catalog">◇</button>
+      <button class="rail-btn active" title="Home">▦</button>
+      <button class="rail-btn" title="Self-service">⚡</button>
+      <button class="rail-btn" title="Data">💧</button>
+      <button class="rail-btn" title="Builder">☰</button>
+      <button class="rail-btn" title="AI">✦</button>
+      <button class="rail-btn" title="Security">🛡</button>
+      <span class="rail-spacer"></span>
+      <button class="rail-btn bell" title="Notifications">🔔<span>9+</span></button>
+      <button class="rail-btn avatar" title="You">VI</button>
+    </nav>
+
+    <aside class="sidebar">
+      <label class="org-switch">
+        <span class="org-caret">▾</span>
+        <select aria-label="Port organization">
+          <option>BannerHealth - Dev</option>
+          <option>BannerHealth - QA</option>
+          <option>BannerHealth - Prod</option>
+        </select>
+      </label>
+      <input class="search" placeholder="Search pages" />
+      <button class="nav home active">Home</button>
+      <div class="nav-label">Organization <span>▾ +</span></div>
+      <details open>
+        <summary>Manage service catalog</summary>
+        <button class="nav nested">Services</button>
+        <button class="nav nested">Workloads</button>
+        <button class="nav nested">Set up automatic discovery</button>
+      </details>
+      <details>
+        <summary>Manage users and teams</summary>
+        <button class="nav nested">Users</button>
+        <button class="nav nested">Environments</button>
+        <button class="nav nested">Teams</button>
+        <button class="nav nested">Groups</button>
+      </details>
+      <button class="nav">Plan my day</button>
+      <button class="nav">Manage my team's work</button>
+      <button class="nav">Manage incidents</button>
+      <button class="nav">Comply with standards</button>
+      <button class="nav">AI Invocations</button>
+      <button class="nav">AI Agents</button>
+      <details>
+        <summary>Manage scorecards</summary>
+        <button class="nav nested">Scorecards</button>
+        <button class="nav nested">Scorecard rules</button>
+        <button class="nav nested">Scorecard rule results</button>
+      </details>
+      <details>
+        <summary>Catalog tables</summary>
+        <button class="nav nested">Self-Service Feedback</button>
+        <button class="nav nested">Deployments</button>
+        <button class="nav nested">GitHub Workflow Runs</button>
+        <button class="nav nested">GitHub Workflows</button>
+        <button class="nav nested">Self Service Infra Resources</button>
+        <button class="nav nested">AWS AMIs</button>
+        <button class="nav nested">AWS Security Groups</button>
+        <button class="nav nested">AWS Subnets</button>
+        <button class="nav nested">Terraform-managed EC2</button>
+        <button class="nav nested">Classic Load Balancers</button>
+        <button class="nav nested">AWS KMS Keys</button>
+        <button class="nav nested">Jira Teams</button>
+      </details>
+      <div class="nav-label">Private</div>
+      <button class="nav muted">+ Add your private page</button>
+      <p class="chrome-note">Left rail + folders + org switcher are Port chrome. Do not Terraform them on $home.</p>
+    </aside>
+
+    <main>
+      <div class="spec">
+        <h2>Reference v2 — BannerHealth $home · 2026-09-09</h2>
+        <p>
+          Sample numbers only. Locked canvas:
+          <span class="keep">Quick view → 4 KPIs → 3 pies. EC2 and S3 pies have TWO slices: provisioned and failed. There is no pending slice.</span>
+          <span class="drop">If you still see pending · 1 on an EC2/S3 pie, you opened an old download. Re-save this file.</span>
+        </p>
+      </div>
+
+      <header class="top">
+        <h1>Good afternoon, Vishwak</h1>
+        <input class="search wide" placeholder="Search" />
+      </header>
+
+      <p class="row-label">Row 1 · links-widget</p>
+      <section class="quick-links">
+        <article class="card">
+          <h3>Quick view</h3>
+          <p class="sub">Self-service hub · Self Service Infra Resources · GitHub Workflow Runs · Users</p>
+          <div class="card-b quick-chips">
+            <span class="chip">Self-service hub</span>
+            <span class="chip">Self Service Infra Resources</span>
+            <span class="chip">GitHub Workflow Runs</span>
+            <span class="chip">Users and teams</span>
+          </div>
+        </article>
+      </section>
+
+      <p class="row-label">Row 2 · entities-number-chart · counts only, not tables</p>
+      <section class="kpis">
+        <div class="kpi good">
+          <div class="label">Provisioned EC2</div>
+          <div class="hint">resource = ec2 · provisioning_status = provisioned</div>
+          <div class="value">3</div>
+          <div class="type">KPI count · not a resource table</div>
+        </div>
+        <div class="kpi good">
+          <div class="label">Provisioned S3</div>
+          <div class="hint">resource = s3 · provisioning_status = provisioned</div>
+          <div class="value">2</div>
+          <div class="type">KPI count · not a resource table</div>
+        </div>
+        <div class="kpi bad">
+          <div class="label">Failed Workflow Runs</div>
+          <div class="hint">conclusion = failure</div>
+          <div class="value">2</div>
+          <div class="type">KPI count · not a run table</div>
+        </div>
+        <div class="kpi info">
+          <div class="label">Completed Tasks</div>
+          <div class="hint">Jira status = Done</div>
+          <div class="value">3</div>
+          <div class="type">KPI count · not a Jira table</div>
+        </div>
+      </section>
+
+      <p class="row-label">Row 3 · entities-pie-chart · EC2/S3 provisioned + failed only</p>
+      <section class="pies">
+        <article class="card">
+          <h3>EC2 by Status</h3>
+          <p class="sub">TWO slices only: provisioned + failed. Pending is excluded.</p>
+          <div class="card-b pie-wrap">
+            <div class="pie" style="background:conic-gradient(#10b981 0deg 270deg,#ef4444 270deg 360deg)"></div>
+            <div class="legend">
+              <div><span class="swatch" style="background:#10b981"></span>provisioned · 3</div>
+              <div><span class="swatch" style="background:#ef4444"></span>failed · 1</div>
+            </div>
+          </div>
+        </article>
+        <article class="card">
+          <h3>S3 by Status</h3>
+          <p class="sub">TWO slices only: provisioned + failed. Pending is excluded.</p>
+          <div class="card-b pie-wrap">
+            <div class="pie" style="background:conic-gradient(#10b981 0deg 240deg,#ef4444 240deg 360deg)"></div>
+            <div class="legend">
+              <div><span class="swatch" style="background:#10b981"></span>provisioned · 2</div>
+              <div><span class="swatch" style="background:#ef4444"></span>failed · 1</div>
+            </div>
+          </div>
+        </article>
+        <article class="card">
+          <h3>Workflow Runs by Conclusion</h3>
+          <p class="sub">Distribution of run conclusions</p>
+          <div class="card-b pie-wrap">
+            <div class="pie" style="background:conic-gradient(#10b981 0deg 180deg,#2f6bff 180deg 240deg,#ef4444 240deg 360deg)"></div>
+            <div class="legend">
+              <div><span class="swatch" style="background:#10b981"></span>success · 3</div>
+              <div><span class="swatch" style="background:#2f6bff"></span>in_progress · 1</div>
+              <div><span class="swatch" style="background:#ef4444"></span>failure · 2</div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <p class="row-label">Row 4 · action-card-widget (size 5) + recently-viewed-entities (size 7)</p>
+      <section class="actions-and-viewed">
+        <article class="card">
+          <h3>Quick Actions</h3>
+          <p class="sub">Three buttons only — Create EC2 / Create S3 / Submit Feedback</p>
+          <div class="card-b action-list">
+            <div class="action"><span class="bolt">⚡</span>Create EC2 Instance</div>
+            <div class="action"><span class="bolt">⚡</span>Create S3 Bucket</div>
+            <div class="action"><span class="bolt">⚡</span>Submit Feedback</div>
+          </div>
+        </article>
+        <article class="card recent">
+          <h3>Recently Viewed</h3>
+          <p class="sub">Your recently accessed entities</p>
+          <div class="card-b">
+            <div class="row"><span>idp-demo-bastion</span><span class="type">Self Service Infra Resources</span><span class="when">viewed today</span></div>
+            <div class="row"><span>bh-idp-artifacts-dev</span><span class="type">Self Service Infra Resources</span><span class="when">viewed today</span></div>
+            <div class="row"><span>change-ec2-instance.yml #1024</span><span class="type">GitHub Workflow Run</span><span class="when">viewed yesterday</span></div>
+            <div class="row"><span>IDP-73182</span><span class="type">Jira Issue</span><span class="when">viewed yesterday</span></div>
+            <div class="row"><span>S3 Bucket Provisioning</span><span class="type">Service Offering</span><span class="when">viewed 2 days ago</span></div>
+          </div>
+        </article>
+      </section>
+
+      <div class="excluded">
+        <h3>Not on Home — delete if you still see these</h3>
+        <ul>
+          <li>Provisioned EC2 Resources (table · green “provisioned”)</li>
+          <li>Provisioned S3 Resources (table · green “provisioned”)</li>
+          <li>Recent Failed Workflow Runs (table · red “failure”)</li>
+          <li>Recently Completed Tasks (table · green “Done”)</li>
+        </ul>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

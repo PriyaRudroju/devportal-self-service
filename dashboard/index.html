@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BannerHealth Home preview (sample data)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <nav class="rail" aria-label="Port modules">
+      <button class="rail-btn" title="Search">⌕</button>
+      <button class="rail-btn" title="Catalog">◇</button>
+      <button class="rail-btn active" title="Home">▦</button>
+      <button class="rail-btn" title="Self-service">⚡</button>
+      <button class="rail-btn" title="Data">💧</button>
+      <button class="rail-btn" title="Builder">☰</button>
+      <button class="rail-btn" title="AI">✦</button>
+      <button class="rail-btn" title="Security">🛡</button>
+      <span class="rail-spacer"></span>
+      <button class="rail-btn bell" title="Notifications">🔔<span>9+</span></button>
+      <button class="rail-btn avatar" title="You">VI</button>
+    </nav>
+
+    <aside class="sidebar">
+      <label class="org-switch">
+        <span class="org-caret">▾</span>
+        <select id="orgSwitch" aria-label="Port organization">
+          <option value="dev">BannerHealth - Dev</option>
+          <option value="qa">BannerHealth - QA</option>
+          <option value="prod">BannerHealth - Prod</option>
+        </select>
+      </label>
+      <input class="search" placeholder="Search pages" />
+
+      <button class="nav home active">Home</button>
+
+      <div class="nav-label">
+        Organization
+        <span class="nav-tools">▾ +</span>
+      </div>
+
+      <details open>
+        <summary>Manage service catalog</summary>
+        <button class="nav nested">Services</button>
+        <button class="nav nested">Workloads</button>
+        <button class="nav nested">Set up automatic discovery</button>
+      </details>
+      <details>
+        <summary>Manage users and teams</summary>
+        <button class="nav nested">Users</button>
+        <button class="nav nested">Environments</button>
+        <button class="nav nested">Teams</button>
+        <button class="nav nested">Groups</button>
+      </details>
+      <button class="nav">Plan my day</button>
+      <button class="nav">Manage my team's work</button>
+      <button class="nav">Manage incidents</button>
+      <button class="nav">Comply with standards</button>
+      <button class="nav">AI Invocations</button>
+      <button class="nav">AI Agents</button>
+      <details>
+        <summary>Manage scorecards</summary>
+        <button class="nav nested">Scorecards</button>
+        <button class="nav nested">Scorecard rules</button>
+        <button class="nav nested">Scorecard rule results</button>
+      </details>
+      <details>
+        <summary>Catalog tables</summary>
+        <button class="nav nested" data-table="jira">Self-Service Feedback</button>
+        <button class="nav nested">Deployments</button>
+        <button class="nav nested" data-table="runs">GitHub Workflow Runs</button>
+        <button class="nav nested">GitHub Workflows</button>
+        <button class="nav nested" data-table="ec2">Self Service Infra Resources</button>
+        <button class="nav nested">AWS AMIs</button>
+        <button class="nav nested">AWS Security Groups</button>
+        <button class="nav nested">AWS Subnets</button>
+        <button class="nav nested" data-table="ec2">Terraform-managed EC2</button>
+        <button class="nav nested">Classic Load Balancers</button>
+        <button class="nav nested">AWS KMS Keys</button>
+        <button class="nav nested">Jira Teams</button>
+      </details>
+
+      <div class="nav-label">Private</div>
+      <button class="nav muted">+ Add your private page</button>
+    </aside>
+
+    <main>
+      <div class="sample-banner">
+        Sample data only — not live BannerHealth. After the pies: Quick Actions + Recently viewed only. No Provisioned EC2/S3, failed-run, or Jira tables.
+      </div>
+      <header class="top">
+        <h1 id="greeting">Good afternoon</h1>
+        <input class="search wide" id="globalSearch" placeholder="Search" />
+      </header>
+
+      <section class="quick-links" id="quickLinks"></section>
+      <section class="kpis" id="kpis"></section>
+      <section class="pies" id="pies"></section>
+      <section class="actions-and-viewed" id="actionsAndViewed">
+        <section class="actions" id="actions"></section>
+        <section class="recent" id="recentlyViewed"></section>
+      </section>
+    </main>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>

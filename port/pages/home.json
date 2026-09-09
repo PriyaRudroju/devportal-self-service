@@ -1,0 +1,197 @@
+{
+  "identifier": "$home",
+  "title": "Home",
+  "icon": "Home",
+  "type": "home",
+  "description": "BannerHealth Home: provisioned KPIs, pies, three self-service actions, and recently viewed.",
+  "locked": false,
+  "widgets": [
+    {
+      "id": "homeDashboard",
+      "type": "dashboard-widget",
+      "layout": [
+        {
+          "height": 200,
+          "columns": [
+            { "id": "quickViewLinks", "size": 12 }
+          ]
+        },
+        {
+          "height": 180,
+          "columns": [
+            { "id": "kpiProvisionedEc2", "size": 3 },
+            { "id": "kpiProvisionedS3", "size": 3 },
+            { "id": "kpiFailedGithubRuns", "size": 3 },
+            { "id": "kpiCompletedJira", "size": 3 }
+          ]
+        },
+        {
+          "height": 400,
+          "columns": [
+            { "id": "pieEc2Status", "size": 4 },
+            { "id": "pieS3Status", "size": 4 },
+            { "id": "pieGithubRunStatus", "size": 4 }
+          ]
+        },
+        {
+          "height": 320,
+          "columns": [
+            { "id": "quickActions", "size": 5 },
+            { "id": "recentlyViewed", "size": 7 }
+          ]
+        }
+      ],
+      "widgets": [
+        {
+          "id": "quickViewLinks",
+          "type": "links-widget",
+          "title": "Quick view",
+          "icon": "Link",
+          "links": [
+            { "title": "Self-service hub", "url": "/self-serve", "icon": "Bolt" },
+            { "title": "Self Service Infra Resources", "url": "/selfServiceInfraResources", "icon": "Server" },
+            { "title": "GitHub Workflow Runs", "url": "/githubWorkflowRun", "icon": "Github" },
+            { "title": "Users and teams", "url": "/settings/users", "icon": "Team" }
+          ]
+        },
+        {
+          "id": "kpiProvisionedEc2",
+          "type": "entities-number-chart",
+          "title": "Provisioned EC2",
+          "icon": "AWS",
+          "blueprint": "selfServiceInfraResources",
+          "calculationBy": "entities",
+          "func": "count",
+          "unit": "custom",
+          "unitCustom": "instances",
+          "dataset": {
+            "combinator": "and",
+            "rules": [
+              { "property": "resource", "operator": "=", "value": "ec2" },
+              { "property": "provisioning_status", "operator": "=", "value": "provisioned" }
+            ]
+          }
+        },
+        {
+          "id": "kpiProvisionedS3",
+          "type": "entities-number-chart",
+          "title": "Provisioned S3",
+          "icon": "AWS",
+          "blueprint": "selfServiceInfraResources",
+          "calculationBy": "entities",
+          "func": "count",
+          "unit": "custom",
+          "unitCustom": "buckets",
+          "dataset": {
+            "combinator": "and",
+            "rules": [
+              { "property": "resource", "operator": "=", "value": "s3" },
+              { "property": "provisioning_status", "operator": "=", "value": "provisioned" }
+            ]
+          }
+        },
+        {
+          "id": "kpiFailedGithubRuns",
+          "type": "entities-number-chart",
+          "title": "Failed Workflow Runs",
+          "icon": "Github",
+          "blueprint": "githubWorkflowRun",
+          "calculationBy": "entities",
+          "func": "count",
+          "unit": "custom",
+          "unitCustom": "failed",
+          "dataset": {
+            "combinator": "and",
+            "rules": [
+              { "property": "conclusion", "operator": "=", "value": "failure" }
+            ]
+          }
+        },
+        {
+          "id": "kpiCompletedJira",
+          "type": "entities-number-chart",
+          "title": "Completed Tasks",
+          "icon": "Jira",
+          "blueprint": "jiraIssue",
+          "calculationBy": "entities",
+          "func": "count",
+          "unit": "custom",
+          "unitCustom": "done",
+          "dataset": {
+            "combinator": "and",
+            "rules": [
+              { "property": "status", "operator": "=", "value": "Done" }
+            ]
+          }
+        },
+        {
+          "id": "pieEc2Status",
+          "type": "entities-pie-chart",
+          "title": "EC2 by Status",
+          "icon": "PieChart",
+          "blueprint": "selfServiceInfraResources",
+          "property": "property#provisioning_status",
+          "dataset": {
+            "combinator": "and",
+            "rules": [
+              { "property": "resource", "operator": "=", "value": "ec2" },
+              {
+                "combinator": "or",
+                "rules": [
+                  { "property": "provisioning_status", "operator": "=", "value": "provisioned" },
+                  { "property": "provisioning_status", "operator": "=", "value": "failed" }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "pieS3Status",
+          "type": "entities-pie-chart",
+          "title": "S3 by Status",
+          "icon": "PieChart",
+          "blueprint": "selfServiceInfraResources",
+          "property": "property#provisioning_status",
+          "dataset": {
+            "combinator": "and",
+            "rules": [
+              { "property": "resource", "operator": "=", "value": "s3" },
+              {
+                "combinator": "or",
+                "rules": [
+                  { "property": "provisioning_status", "operator": "=", "value": "provisioned" },
+                  { "property": "provisioning_status", "operator": "=", "value": "failed" }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "pieGithubRunStatus",
+          "type": "entities-pie-chart",
+          "title": "Workflow Runs by Conclusion",
+          "icon": "PieChart",
+          "blueprint": "githubWorkflowRun",
+          "property": "property#conclusion",
+          "dataset": { "combinator": "and", "rules": [] }
+        },
+        {
+          "id": "quickActions",
+          "type": "action-card-widget",
+          "title": "Quick Actions",
+          "icon": "Bolt",
+          "actions": [
+            "create_ec2_instance",
+            "create_s3_bucket",
+            "submit_feedback"
+          ]
+        },
+        {
+          "id": "recentlyViewed",
+          "type": "recently-viewed-entities",
+          "title": "Recently viewed entities"
+        }
+      ]
+    }
+  ]
+}
