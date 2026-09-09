@@ -1,0 +1,40 @@
+# OPTIONAL — only if Owning teams / My entities do not work for Terraform-managed EC2 after Dev QA.
+#
+# Do not copy this file as-is. Paste into whichever file already defines that blueprint:
+#   blueprints-terraform-cloud.tf
+#   blueprints-aws.tf
+#   blueprint-self-service.tf
+#
+# Do not add a second Service blueprint if blueprint-self-service.tf already has one.
+# Do not add Jira/GitHub relations unless those target identifiers already exist.
+#
+# Prefer Port native ownership (Terraform provider >= 2.1.4). That is what the
+# dashboard "Owning teams" / "My Teams" filter uses ($team meta-property):
+#
+#   ownership = {
+#     type  = "Direct"
+#     title = "Owning teams"
+#   }
+#
+# Add owner → _user only if My entities stays empty for infra after ownership is on.
+#
+#   relations = {
+#     owner = {
+#       title    = "Owner"
+#       target   = "_user"
+#       required = false
+#       many     = false
+#     }
+#   }
+#
+# The plan also allowed owningTeam → _team. Use that only if the existing blueprint
+# already uses a custom relation instead of native ownership (do not add both).
+#
+#   relations = {
+#     owningTeam = {
+#       title    = "Owning Team"
+#       target   = "_team"
+#       required = false
+#       many     = false
+#     }
+#   }
