@@ -22,6 +22,8 @@ Pages are **opt-in** in this demo repo. Default `apply_port_config.py` still app
 
 ## Local preview
 
+[`dashboard/`](../dashboard/) is a **sample-data** stand-in of the Home canvas (pending EC2/S3, failed runs, completed Jira). It does not apply to Port. Sidebar folders match live BannerHealth Dev and are not managed by `$home`.
+
 ```bash
 cd dashboard
 python3 -m http.server 4173
