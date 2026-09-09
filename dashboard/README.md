@@ -1,23 +1,32 @@
 # BannerHealth Home preview (sample data)
 
-Static stand-in for the `$home` canvas in `tfc_port_configuration/pages-home.tf`.
+This is **not** live Port. The cloud agent’s `http://localhost:4173` only works on **that** VM, not on your laptop.
 
-**Not live Port.** Counts, pies, and tables are fake so you can confirm layout. The sidebar copies BannerHealth Dev Organization folders and is not managed by Terraform.
+## Easiest: no server
 
-```bash
-cd dashboard
-python3 -m http.server 4173
+1. Pull this repo / this branch (`cursor/landing-dashboard-98a0`).
+2. Double-click **`dashboard/OPEN-THIS.html`**.
+3. If the file is in `tfc_port_configuration`, use **`home-preview-OPEN-THIS.html`** (copy from `dropin/tfc_port_configuration/`).
+
+GitHub: download  
+https://github.com/PriyaRudroju/devportal-self-service/blob/cursor/landing-dashboard-98a0/dashboard/OPEN-THIS.html  
+→ **Raw** → Save As → open in Chrome/Edge.
+
+## Optional: Python server (your PC)
+
+In **PowerShell**, from the folder that contains `index.html`:
+
+```powershell
+cd path\to\devportal-self-service\dashboard
+py -m http.server 4173
 ```
 
-Open http://localhost:4173
+If `py` fails:
 
-| Widget | Sample numbers |
-|---|---|
-| Provisioned EC2 | 3 |
-| Provisioned S3 | 2 |
-| Failed Workflow Runs | 2 |
-| Completed Tasks (Jira Done) | 3 |
+```powershell
+python -m http.server 4173
+```
 
-Quick Actions is three buttons only. Provisioned EC2/S3 tables sit **below** that row.
+Then open **http://127.0.0.1:4173/** (not the agent chat URL).
 
-The Dev / QA / Prod control only changes the greeting in this preview.
+Sample KPIs: Provisioned EC2 **3**, Provisioned S3 **2**, Failed runs **2**, Completed Tasks **3**.
