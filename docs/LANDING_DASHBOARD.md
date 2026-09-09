@@ -22,7 +22,7 @@ Pages are **opt-in** in this demo repo. Default `apply_port_config.py` still app
 
 ## Local preview
 
-[`dashboard/`](../dashboard/) is a **sample-data** stand-in of the Home canvas (pending EC2/S3, failed runs, completed Jira). It does not apply to Port. Sidebar folders match live BannerHealth Dev and are not managed by `$home`.
+[`dashboard/`](../dashboard/) is a **sample-data** stand-in of the Home canvas (provisioned EC2/S3, failed runs, completed Jira). Quick Actions is three buttons only; tables are separate. It does not apply to Port. Sidebar folders match live BannerHealth Dev and are not managed by `$home`.
 
 ```bash
 cd dashboard
@@ -46,9 +46,9 @@ Do **not** apply `home.json` to `org_NaOn60IA22iSZcWo` (this repo’s prod).
 
 ## Widget map
 
-- Number charts: pending EC2, TFC EC2 total, failed GitHub runs, open Jira
-- Pies: EC2 by `status`, GitHub runs by `conclusion`, Jira by `status`
-- Quick view: links + action cards (ids from `ec2-action.tf` / `s3-action.tf` / `feedback.tf`; omit any id that is not in those files)
-- Personal: my-entities, recently-viewed, recently-used-actions
-- Tables: Terraform-managed EC2, GitHub Workflow Runs
-- Filters: Owning teams, Environment
+- Number charts: provisioned EC2, provisioned S3, failed GitHub runs, completed Jira
+- Pies: EC2 by `provisioning_status` (resource=ec2), S3 by `provisioning_status` (resource=s3), GitHub runs by `conclusion`
+- Quick view: Self-service hub, Self Service Infra Resources, GitHub Workflow Runs, Users
+- Quick Actions: three action cards only (EC2 / S3 / Feedback) — not wrapping tables
+- Tables: provisioned EC2, provisioned S3, failed workflow runs, completed Jira
+- Sidebar and Dev/QA/Prod org switcher are unchanged

@@ -1,15 +1,15 @@
 const DATA = {
   user: "Vishwak",
   infra: [
-    { resource: "ec2", resource_name: "idp-demo-bastion", aws_region: "us-west-2", environment: "dev", requestor: "priya", approval_status: "pending", created_at: "2026-09-08 09:14" },
-    { resource: "ec2", resource_name: "claims-worker-qa", aws_region: "us-east-1", environment: "qa", requestor: "alex", approval_status: "pending", created_at: "2026-09-08 11:02" },
-    { resource: "ec2", resource_name: "patient-cache-dev", aws_region: "us-west-2", environment: "dev", requestor: "alex", approval_status: "pending", created_at: "2026-09-07 16:40" },
-    { resource: "ec2", resource_name: "analytics-scratch", aws_region: "us-east-1", environment: "dev", requestor: "jordan", approval_status: "approved", created_at: "2026-09-06 08:21" },
-    { resource: "ec2", resource_name: "tfc-runner-prod", aws_region: "us-west-2", environment: "prod", requestor: "priya", approval_status: "rejected", created_at: "2026-09-05 13:55" },
-    { resource: "s3", resource_name: "bh-claims-logs-qa", aws_region: "us-east-1", environment: "qa", requestor: "alex", approval_status: "pending", created_at: "2026-09-08 10:18" },
-    { resource: "s3", resource_name: "bh-idp-artifacts-dev", aws_region: "us-west-2", environment: "dev", requestor: "priya", approval_status: "pending", created_at: "2026-09-07 14:03" },
-    { resource: "s3", resource_name: "bh-analytics-raw-prod", aws_region: "us-east-1", environment: "prod", requestor: "jordan", approval_status: "approved", created_at: "2026-09-04 09:47" },
-    { resource: "s3", resource_name: "bh-app-backups-dev", aws_region: "us-west-2", environment: "dev", requestor: "alex", approval_status: "rejected", created_at: "2026-09-03 17:12" },
+    { resource: "ec2", resource_name: "idp-demo-bastion", aws_region: "us-west-2", environment: "dev", requestor: "priya", provisioning_status: "provisioned", created_at: "2026-09-08 09:14" },
+    { resource: "ec2", resource_name: "claims-worker-qa", aws_region: "us-east-1", environment: "qa", requestor: "alex", provisioning_status: "provisioned", created_at: "2026-09-08 11:02" },
+    { resource: "ec2", resource_name: "patient-cache-dev", aws_region: "us-west-2", environment: "dev", requestor: "alex", provisioning_status: "provisioned", created_at: "2026-09-07 16:40" },
+    { resource: "ec2", resource_name: "analytics-scratch", aws_region: "us-east-1", environment: "dev", requestor: "jordan", provisioning_status: "pending", created_at: "2026-09-06 08:21" },
+    { resource: "ec2", resource_name: "tfc-runner-prod", aws_region: "us-west-2", environment: "prod", requestor: "priya", provisioning_status: "failed", created_at: "2026-09-05 13:55" },
+    { resource: "s3", resource_name: "bh-idp-artifacts-dev", aws_region: "us-west-2", environment: "dev", requestor: "priya", provisioning_status: "provisioned", created_at: "2026-09-07 14:03" },
+    { resource: "s3", resource_name: "bh-claims-logs-qa", aws_region: "us-east-1", environment: "qa", requestor: "alex", provisioning_status: "provisioned", created_at: "2026-09-08 10:18" },
+    { resource: "s3", resource_name: "bh-analytics-raw-prod", aws_region: "us-east-1", environment: "prod", requestor: "jordan", provisioning_status: "pending", created_at: "2026-09-04 09:47" },
+    { resource: "s3", resource_name: "bh-app-backups-dev", aws_region: "us-west-2", environment: "dev", requestor: "alex", provisioning_status: "failed", created_at: "2026-09-03 17:12" },
   ],
   runs: [
     { name: "change-ec2-instance.yml #1024", conclusion: "success", status: "completed", createdAt: "2026-09-08 12:01", link: "github.com/BHGitOps/…" },
@@ -29,11 +29,11 @@ const DATA = {
 };
 
 const COLORS = {
+  provisioned: "#10b981",
   pending: "#f59e0b",
-  approved: "#10b981",
-  rejected: "#ef4444",
-  success: "#10b981",
+  failed: "#ef4444",
   failure: "#ef4444",
+  success: "#10b981",
   in_progress: "#2f6bff",
   Done: "#10b981",
 };
@@ -85,9 +85,9 @@ function pie(countsMap) {
 }
 
 function badge(v) {
-  const cls = ["approved", "success", "Done"].includes(v)
+  const cls = ["provisioned", "success", "Done"].includes(v)
     ? "ok"
-    : ["rejected", "failure"].includes(v)
+    : ["failed", "failure"].includes(v)
       ? "bad"
       : ["pending", "To Do"].includes(v)
         ? "warn"
@@ -118,8 +118,8 @@ function render() {
   const jira = DATA.jira.filter(match);
   const ec2 = infra.filter((r) => r.resource === "ec2");
   const s3 = infra.filter((r) => r.resource === "s3");
-  const pendingEc2 = ec2.filter((r) => r.approval_status === "pending");
-  const pendingS3 = s3.filter((r) => r.approval_status === "pending");
+  const provisionedEc2 = ec2.filter((r) => r.provisioning_status === "provisioned");
+  const provisionedS3 = s3.filter((r) => r.provisioning_status === "provisioned");
   const failedRuns = runs.filter((r) => r.conclusion === "failure");
   const doneJira = jira.filter((r) => r.status === "Done");
 
@@ -128,29 +128,29 @@ function render() {
       <h3>Quick view</h3>
       <div class="card-b quick-chips">
         <button class="chip">Self-service hub</button>
-        <button class="chip" data-table="ec2">Terraform-managed EC2</button>
+        <button class="chip" data-table="ec2">Self Service Infra Resources</button>
         <button class="chip" data-table="runs">GitHub Workflow Runs</button>
         <button class="chip">Users and teams</button>
       </div>
     </article>`;
 
   document.getElementById("kpis").innerHTML = `
-    <div class="kpi warn">
-      <div class="label">Pending EC2 Requests</div>
-      <div class="hint">Awaiting approval · resource = ec2</div>
-      <div class="value">${pendingEc2.length}</div>
+    <div class="kpi good">
+      <div class="label">Provisioned EC2</div>
+      <div class="hint">Active instances · resource = ec2</div>
+      <div class="value">${provisionedEc2.length}</div>
     </div>
-    <div class="kpi warn">
-      <div class="label">Pending S3 Requests</div>
-      <div class="hint">Awaiting approval · resource = s3</div>
-      <div class="value">${pendingS3.length}</div>
+    <div class="kpi good">
+      <div class="label">Provisioned S3</div>
+      <div class="hint">Active buckets · resource = s3</div>
+      <div class="value">${provisionedS3.length}</div>
     </div>
     <div class="kpi bad">
       <div class="label">Failed Workflow Runs</div>
       <div class="hint">conclusion = failure</div>
       <div class="value">${failedRuns.length}</div>
     </div>
-    <div class="kpi good">
+    <div class="kpi info">
       <div class="label">Completed Tasks</div>
       <div class="hint">Jira status = Done</div>
       <div class="value">${doneJira.length}</div>
@@ -158,17 +158,17 @@ function render() {
 
   document.getElementById("pies").innerHTML = `
     <article class="card">
-      <h3>EC2 Requests by Status</h3>
-      <p class="sub">Distribution of approval states</p>
-      <div class="card-b">${pie(counts(ec2, "approval_status"))}</div>
+      <h3>EC2 by Status</h3>
+      <p class="sub">Distribution of all EC2 resources</p>
+      <div class="card-b">${pie(counts(ec2, "provisioning_status"))}</div>
     </article>
     <article class="card">
-      <h3>S3 Requests by Status</h3>
-      <p class="sub">Distribution of approval states</p>
-      <div class="card-b">${pie(counts(s3, "approval_status"))}</div>
+      <h3>S3 by Status</h3>
+      <p class="sub">Distribution of all S3 resources</p>
+      <div class="card-b">${pie(counts(s3, "provisioning_status"))}</div>
     </article>
     <article class="card">
-      <h3>Workflow Runs by Status</h3>
+      <h3>Workflow Runs by Conclusion</h3>
       <p class="sub">Distribution of run conclusions</p>
       <div class="card-b">${pie(counts(runs, "conclusion"))}</div>
     </article>`;
@@ -176,7 +176,7 @@ function render() {
   document.getElementById("actions").innerHTML = `
     <article class="card">
       <h3>Quick Actions</h3>
-      <p class="sub">Common self-service operations</p>
+      <p class="sub">Common self-service operations — buttons only, tables are below</p>
       <div class="card-b action-row">
         <button class="btn">Create EC2 Instance</button>
         <button class="btn">Create S3 Bucket</button>
@@ -186,26 +186,26 @@ function render() {
 
   document.getElementById("tables").innerHTML = `
     <article class="card" id="table-ec2">
-      <h3>Pending EC2 Requests</h3>
-      <p class="sub">Awaiting approval · sample rows</p>
-      <div class="card-b">${rowsHtml(pendingEc2, [
+      <h3>Provisioned EC2 Resources</h3>
+      <p class="sub">Active and deployed EC2 instances · sample rows</p>
+      <div class="card-b">${rowsHtml(provisionedEc2, [
         { key: "resource_name", label: "resource_name" },
         { key: "aws_region", label: "aws_region" },
         { key: "environment", label: "environment" },
         { key: "requestor", label: "requestor" },
-        { key: "approval_status", label: "approval_status", badge: true },
+        { key: "provisioning_status", label: "provisioning_status", badge: true },
         { key: "created_at", label: "created_at" },
       ])}</div>
     </article>
     <article class="card" id="table-s3">
-      <h3>Pending S3 Requests</h3>
-      <p class="sub">Awaiting approval · sample rows</p>
-      <div class="card-b">${rowsHtml(pendingS3, [
+      <h3>Provisioned S3 Resources</h3>
+      <p class="sub">Active and deployed S3 buckets · sample rows</p>
+      <div class="card-b">${rowsHtml(provisionedS3, [
         { key: "resource_name", label: "resource_name" },
         { key: "aws_region", label: "aws_region" },
         { key: "environment", label: "environment" },
         { key: "requestor", label: "requestor" },
-        { key: "approval_status", label: "approval_status", badge: true },
+        { key: "provisioning_status", label: "provisioning_status", badge: true },
         { key: "created_at", label: "created_at" },
       ])}</div>
     </article>

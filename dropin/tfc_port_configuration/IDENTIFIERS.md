@@ -9,18 +9,18 @@ Do not guess action ids in the BHGitOps PR. If an id is not in `*-action.tf` / `
 | Confirm in file | What to copy into `pages-home.tf` locals | Default in drop-in | Why this default |
 |---|---|---|---|
 | `blueprints-github.tf` | GitHub workflow run blueprint + conclusion property | `githubWorkflowRun`, `conclusion`, failed = `failure` | [Port GitHub Ocean](https://docs.port.io/context-lake/ingestion/ingest-data-into-port/native-integrations/git/github-ocean/examples/) — matches BannerHealth sidebar title **GitHub Workflow Runs** |
-| `blueprints-jira.tf` | Jira issue blueprint + status property | `jiraIssue`, `status`, open = status `!=` `Done` | [Port Jira](https://docs.port.io/context-lake/ingestion/ingest-data-into-port/native-integrations/project-management/jira/) — matches sidebar **Jira Issue** |
+| `blueprints-jira.tf` | Jira issue blueprint + status property | `jiraIssue`, `status`, completed = `Done` | Home KPI is **Completed Tasks** (`status = Done`), not open issues. |
 
 ## Must grep (do not treat as live BannerHealth ids)
 
 | Confirm in file | What to copy into `pages-home.tf` locals | Default in drop-in | Why this default |
 |---|---|---|---|
-| `blueprints-terraform-cloud.tf` | Terraform-managed EC2 blueprint id + status property + pending enum | `terraformManagedEc2`, `status`, `pending` | UI title only. Live catalog also has **EC2 Instances** (`ec2Instance` / `instance_state` in Port AWS docs) — that is a **different** blueprint. If the TFC file uses `state` instead of `status`, change `home_ec2_status_property`. |
-| `ec2-action.tf` | EC2 self-service action id | `create_ec2` | Filename only. Demo repo uses `provision_ec2_request`. Set `""` if the identifier is not in this file. |
-| `s3-action.tf` | S3 self-service action id | `create_s3` | Filename only. Demo repo uses `provision_s3_bucket`. |
-| `feedback.tf` | Submit Feedback action id | `submit_feedback` | Live Home already has a working **Submit Feedback** card; confirm the identifier. |
-| `environments/dev/`, `qa/`, `prod/` | TFC workspace that applies Port for that env | apply Home via those workspaces | Plan: “hardcode `port_environment` per env”. Home is one `port_page`; each env workspace applies it to that Port environment. |
-| `versions.tf` / `providers.tf` | Port provider version + beta flag | `PORT_BETA_FEATURES_ENABLED=true` on the TFC workspace if `port_page` is gated | Provider docs: pages are beta. |
+| `blueprint-self-service.tf` | Self-service infra blueprint + resource + provisioning_status | `selfServiceInfraResources`, `resource` = `ec2`/`s3`, `provisioning_status` = `provisioned` | Home KPIs/tables are **provisioned** real-time rows, not pending approval. Confirm the property name if live uses `approval_status`. |
+| `ec2-action.tf` / `variables.tf` | EC2 create action id | `create_ec2_instance` or `var.ec2_instance_create_action_identifier` | Set `""` if missing. |
+| `s3-action.tf` / `variables.tf` | S3 create action id | `create_s3_bucket` or `var.s3_bucket_create_action_identifier` | Use the standard create action, not admin/policy. |
+| `feedback.tf` / `variables.tf` | Submit Feedback action id | `submit_feedback` or `var.feedback_action_identifier` | Confirm the identifier. |
+| `environments/dev/`, `qa/`, `prod/` | TFC workspace that applies Port for that env | apply Home via those workspaces | Home is one `port_page`; each env workspace applies it to that Port organization. |
+| `versions.tf` / `providers.tf` | Port provider version + beta flag | `PORT_BETA_FEATURES_ENABLED=true` if `port_page` is gated | Provider docs: pages are beta. |
 
 ```bash
 # From the root of tfc_port_configuration (or pass the path to the helper):

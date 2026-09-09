@@ -2,7 +2,7 @@
 
 Static stand-in for the `$home` canvas in `tfc_port_configuration/pages-home.tf`.
 
-**Not live Port.** Counts, pies, and tables are fake so you can confirm layout. The sidebar copies BannerHealth Dev Organization folders and does not change in Terraform.
+**Not live Port.** Counts, pies, and tables are fake so you can confirm layout. The sidebar copies BannerHealth Dev Organization folders and is not managed by Terraform.
 
 ```bash
 cd dashboard
@@ -11,11 +11,13 @@ python3 -m http.server 4173
 
 Open http://localhost:4173
 
-| Widget | Sample numbers in this preview |
+| Widget | Sample numbers |
 |---|---|
-| Pending EC2 Requests | 3 |
-| Pending S3 Requests | 2 |
+| Provisioned EC2 | 3 |
+| Provisioned S3 | 2 |
 | Failed Workflow Runs | 2 |
 | Completed Tasks (Jira Done) | 3 |
 
-The Dev / QA / Prod control at the top of the sidebar is the org switcher. In this preview it only changes the greeting label.
+Quick Actions is three buttons only. Provisioned EC2/S3 tables sit **below** that row.
+
+The Dev / QA / Prod control only changes the greeting in this preview.
