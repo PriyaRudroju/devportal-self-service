@@ -49,6 +49,6 @@ Do **not** apply `home.json` to `org_NaOn60IA22iSZcWo` (this repo’s prod).
 - Number charts: provisioned EC2, provisioned S3, failed GitHub runs, completed Jira
 - Pies: EC2 by `provisioning_status` (resource=ec2), S3 by `provisioning_status` (resource=s3), GitHub runs by `conclusion`
 - Quick view: Self-service hub, Self Service Infra Resources, GitHub Workflow Runs, Users
-- Quick Actions: three action cards only (EC2 / S3 / Feedback) — not wrapping tables
-- Tables: provisioned EC2, provisioned S3, failed workflow runs, completed Jira
+- Quick Actions: three action cards only (EC2 / S3 / Feedback)
+- Recently viewed entities (Port personal widget). No catalog tables on Home.
 - Sidebar and Dev/QA/Prod org switcher are unchanged

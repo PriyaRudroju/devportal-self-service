@@ -42,7 +42,7 @@ resource "port_page" "home" {
   title       = "Home"
   icon        = "Home"
   type        = "home"
-  description = "BannerHealth Home: provisioned infra, failed GitHub runs, completed Jira, and three self-service actions."
+  description = "BannerHealth Home: provisioned KPIs, pies, three self-service actions, and recently viewed."
   locked      = false
 
   widgets = [
@@ -80,27 +80,9 @@ resource "port_page" "home" {
           ]
         },
         {
-          height = 400
+          height = 320
           columns = [
-            { id = "provisionedEc2Table", size = 12 },
-          ]
-        },
-        {
-          height = 400
-          columns = [
-            { id = "provisionedS3Table", size = 12 },
-          ]
-        },
-        {
-          height = 400
-          columns = [
-            { id = "failedRunsTable", size = 12 },
-          ]
-        },
-        {
-          height = 400
-          columns = [
-            { id = "completedJiraTable", size = 12 },
+            { id = "recentlyViewed", size = 12 },
           ]
         },
       ]
@@ -232,62 +214,9 @@ resource "port_page" "home" {
           actions = local.home_actions
         },
         {
-          id        = "provisionedEc2Table"
-          type      = "table-entities-explorer"
-          title     = "Provisioned EC2 Resources"
-          icon      = "AWS"
-          blueprint = local.home_ss_blueprint
-          dataset = {
-            combinator = "and"
-            rules = [
-              { property = local.home_ss_resource_property, operator = "=", value = local.home_ss_ec2_value },
-              { property = local.home_ss_status_property, operator = "=", value = local.home_ss_provisioned_value },
-            ]
-          }
-        },
-        {
-          id        = "provisionedS3Table"
-          type      = "table-entities-explorer"
-          title     = "Provisioned S3 Resources"
-          icon      = "AWS"
-          blueprint = local.home_ss_blueprint
-          dataset = {
-            combinator = "and"
-            rules = [
-              { property = local.home_ss_resource_property, operator = "=", value = local.home_ss_s3_value },
-              { property = local.home_ss_status_property, operator = "=", value = local.home_ss_provisioned_value },
-            ]
-          }
-        },
-        {
-          id        = "failedRunsTable"
-          type      = "table-entities-explorer"
-          title     = "Recent Failed Workflow Runs"
-          icon      = "Github"
-          blueprint = local.home_github_run_blueprint
-          dataset = {
-            combinator = "and"
-            rules = [{
-              property = local.home_github_run_conclusion
-              operator = "="
-              value    = local.home_github_run_failed_value
-            }]
-          }
-        },
-        {
-          id        = "completedJiraTable"
-          type      = "table-entities-explorer"
-          title     = "Recently Completed Tasks"
-          icon      = "Jira"
-          blueprint = local.home_jira_blueprint
-          dataset = {
-            combinator = "and"
-            rules = [{
-              property = local.home_jira_status_property
-              operator = "="
-              value    = local.home_jira_done_value
-            }]
-          }
+          id    = "recentlyViewed"
+          type  = "recently-viewed-entities"
+          title = "Recently viewed entities"
         },
       ]
     }),

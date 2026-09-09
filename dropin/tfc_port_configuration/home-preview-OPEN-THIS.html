@@ -300,7 +300,7 @@ th { color: var(--muted); font-size: 11px; }
 
     <main>
       <div class="sample-banner">
-        Sample data only — not live BannerHealth. Provisioned EC2/S3 (not pending). Quick Actions is three buttons; tables are separate cards below.
+        Sample data only — not live BannerHealth. Quick Actions is three buttons. Below that: Recently viewed only (no catalog tables).
       </div>
       <header class="top">
         <h1 id="greeting">Good afternoon</h1>
@@ -311,7 +311,7 @@ th { color: var(--muted); font-size: 11px; }
       <section class="kpis" id="kpis"></section>
       <section class="pies" id="pies"></section>
       <section class="actions" id="actions"></section>
-      <section class="tables-stack" id="tables"></section>
+      <section class="tables-stack" id="recentlyViewed"></section>
     </main>
   </div>
   <script>
@@ -445,8 +445,8 @@ function render() {
       <h3>Quick view</h3>
       <div class="card-b quick-chips">
         <button class="chip">Self-service hub</button>
-        <button class="chip" data-table="ec2">Self Service Infra Resources</button>
-        <button class="chip" data-table="runs">GitHub Workflow Runs</button>
+        <button class="chip">Self Service Infra Resources</button>
+        <button class="chip">GitHub Workflow Runs</button>
         <button class="chip">Users and teams</button>
       </div>
     </article>`;
@@ -493,7 +493,7 @@ function render() {
   document.getElementById("actions").innerHTML = `
     <article class="card">
       <h3>Quick Actions</h3>
-      <p class="sub">Common self-service operations — buttons only, tables are below</p>
+      <p class="sub">Common self-service operations</p>
       <div class="card-b action-row">
         <button class="btn">Create EC2 Instance</button>
         <button class="btn">Create S3 Bucket</button>
@@ -501,63 +501,22 @@ function render() {
       </div>
     </article>`;
 
-  document.getElementById("tables").innerHTML = `
-    <article class="card" id="table-ec2">
-      <h3>Provisioned EC2 Resources</h3>
-      <p class="sub">Active and deployed EC2 instances · sample rows</p>
-      <div class="card-b">${rowsHtml(provisionedEc2, [
-        { key: "resource_name", label: "resource_name" },
-        { key: "aws_region", label: "aws_region" },
-        { key: "environment", label: "environment" },
-        { key: "requestor", label: "requestor" },
-        { key: "provisioning_status", label: "provisioning_status", badge: true },
-        { key: "created_at", label: "created_at" },
-      ])}</div>
-    </article>
-    <article class="card" id="table-s3">
-      <h3>Provisioned S3 Resources</h3>
-      <p class="sub">Active and deployed S3 buckets · sample rows</p>
-      <div class="card-b">${rowsHtml(provisionedS3, [
-        { key: "resource_name", label: "resource_name" },
-        { key: "aws_region", label: "aws_region" },
-        { key: "environment", label: "environment" },
-        { key: "requestor", label: "requestor" },
-        { key: "provisioning_status", label: "provisioning_status", badge: true },
-        { key: "created_at", label: "created_at" },
-      ])}</div>
-    </article>
-    <article class="card" id="table-runs">
-      <h3>Recent Failed Workflow Runs</h3>
-      <p class="sub">Investigation needed</p>
-      <div class="card-b">${rowsHtml(failedRuns, [
-        { key: "name", label: "name" },
-        { key: "conclusion", label: "conclusion", badge: true },
-        { key: "status", label: "status" },
-        { key: "createdAt", label: "createdAt" },
-        { key: "link", label: "link" },
-      ])}</div>
-    </article>
-    <article class="card" id="table-jira">
-      <h3>Recently Completed Tasks</h3>
-      <p class="sub">Jira issues marked Done</p>
-      <div class="card-b">${rowsHtml(doneJira, [
-        { key: "key", label: "key" },
-        { key: "issueType", label: "issueType" },
-        { key: "priority", label: "priority" },
-        { key: "status", label: "status", badge: true },
-        { key: "assignee", label: "assignee" },
-        { key: "updated", label: "updated" },
-      ])}</div>
+  document.getElementById("recentlyViewed").innerHTML = `
+    <article class="card" id="table-viewed">
+      <h3>Recently viewed entities</h3>
+      <p class="sub">Sample rows — live Port shows each user’s own history</p>
+      <div class="card-b">
+        <div class="row"><span>idp-demo-bastion</span><span class="type">Self Service Infra Resources</span></div>
+        <div class="row"><span>bh-idp-artifacts-dev</span><span class="type">Self Service Infra Resources</span></div>
+        <div class="row"><span>change-ec2-instance.yml #1024</span><span class="type">GitHub Workflow Run</span></div>
+        <div class="row"><span>IDP-73182</span><span class="type">Jira Issue</span></div>
+        <div class="row"><span>S3 Bucket Provisioning</span><span class="type">Service Offering</span></div>
+      </div>
     </article>`;
 }
 
 document.getElementById("orgSwitch").onchange = render;
 document.getElementById("globalSearch").oninput = render;
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest("[data-table]");
-  if (!btn) return;
-  document.getElementById("table-" + btn.dataset.table)?.scrollIntoView({ behavior: "smooth" });
-});
 render();
 
   </script>
