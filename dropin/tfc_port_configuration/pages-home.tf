@@ -21,6 +21,7 @@ locals {
   home_ss_s3_value          = "s3"
   home_ss_status_property   = "provisioning_status"
   home_ss_provisioned_value = "provisioned"
+  home_ss_failed_value      = "failed"
 
   home_github_run_blueprint    = "githubWorkflowRun"
   home_github_run_conclusion   = "conclusion"
@@ -182,7 +183,16 @@ resource "port_page" "home" {
           property  = "property#${local.home_ss_status_property}"
           dataset = {
             combinator = "and"
-            rules = [{ property = local.home_ss_resource_property, operator = "=", value = local.home_ss_ec2_value }]
+            rules = [
+              { property = local.home_ss_resource_property, operator = "=", value = local.home_ss_ec2_value },
+              {
+                combinator = "or"
+                rules = [
+                  { property = local.home_ss_status_property, operator = "=", value = local.home_ss_provisioned_value },
+                  { property = local.home_ss_status_property, operator = "=", value = local.home_ss_failed_value },
+                ]
+              },
+            ]
           }
         },
         {
@@ -194,7 +204,16 @@ resource "port_page" "home" {
           property  = "property#${local.home_ss_status_property}"
           dataset = {
             combinator = "and"
-            rules = [{ property = local.home_ss_resource_property, operator = "=", value = local.home_ss_s3_value }]
+            rules = [
+              { property = local.home_ss_resource_property, operator = "=", value = local.home_ss_s3_value },
+              {
+                combinator = "or"
+                rules = [
+                  { property = local.home_ss_status_property, operator = "=", value = local.home_ss_provisioned_value },
+                  { property = local.home_ss_status_property, operator = "=", value = local.home_ss_failed_value },
+                ]
+              },
+            ]
           }
         },
         {

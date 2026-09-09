@@ -132,16 +132,19 @@ function render() {
       <div class="value">${doneJira.length}</div>
     </div>`;
 
+  const ec2Pie = ec2.filter((r) => r.provisioning_status === "provisioned" || r.provisioning_status === "failed");
+  const s3Pie = s3.filter((r) => r.provisioning_status === "provisioned" || r.provisioning_status === "failed");
+
   document.getElementById("pies").innerHTML = `
     <article class="card">
       <h3>EC2 by Status</h3>
-      <p class="sub">Distribution of all EC2 resources</p>
-      <div class="card-b">${pie(counts(ec2, "provisioning_status"))}</div>
+      <p class="sub">Provisioned and failed only</p>
+      <div class="card-b">${pie(counts(ec2Pie, "provisioning_status"))}</div>
     </article>
     <article class="card">
       <h3>S3 by Status</h3>
-      <p class="sub">Distribution of all S3 resources</p>
-      <div class="card-b">${pie(counts(s3, "provisioning_status"))}</div>
+      <p class="sub">Provisioned and failed only</p>
+      <div class="card-b">${pie(counts(s3Pie, "provisioning_status"))}</div>
     </article>
     <article class="card">
       <h3>Workflow Runs by Conclusion</h3>

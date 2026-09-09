@@ -134,7 +134,14 @@
           "dataset": {
             "combinator": "and",
             "rules": [
-              { "property": "resource", "operator": "=", "value": "ec2" }
+              { "property": "resource", "operator": "=", "value": "ec2" },
+              {
+                "combinator": "or",
+                "rules": [
+                  { "property": "provisioning_status", "operator": "=", "value": "provisioned" },
+                  { "property": "provisioning_status", "operator": "=", "value": "failed" }
+                ]
+              }
             ]
           }
         },
@@ -148,7 +155,14 @@
           "dataset": {
             "combinator": "and",
             "rules": [
-              { "property": "resource", "operator": "=", "value": "s3" }
+              { "property": "resource", "operator": "=", "value": "s3" },
+              {
+                "combinator": "or",
+                "rules": [
+                  { "property": "provisioning_status", "operator": "=", "value": "provisioned" },
+                  { "property": "provisioning_status", "operator": "=", "value": "failed" }
+                ]
+              }
             ]
           }
         },
