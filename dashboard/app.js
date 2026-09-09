@@ -172,6 +172,9 @@ function render() {
 document.getElementById("team").onchange = render;
 document.getElementById("env").onchange = render;
 document.getElementById("globalSearch").oninput = render;
+const params = new URLSearchParams(location.search);
+if (params.get("team")) document.getElementById("team").value = params.get("team");
+if (params.get("env")) document.getElementById("env").value = params.get("env");
 document.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-table]");
   if (btn) document.getElementById("table-" + (btn.dataset.table === "jira" ? "ec2" : btn.dataset.table))?.scrollIntoView({ behavior: "smooth" });
