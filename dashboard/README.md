@@ -29,4 +29,4 @@ python -m http.server 4173
 
 Then open **http://127.0.0.1:4173/** (not the agent chat URL).
 
-Sample KPIs: Provisioned EC2 **3**, Provisioned S3 **2**, Failed runs **2**, Completed Tasks **3**. Below Quick Actions: **Recently viewed** only (no EC2/S3/Jira tables).
+Sample KPIs: Provisioned EC2 **3**, Provisioned S3 **2**, Failed runs **2**, Completed Tasks **3**. Next to Quick Actions: **Recently viewed** only (no EC2/S3/Jira tables).

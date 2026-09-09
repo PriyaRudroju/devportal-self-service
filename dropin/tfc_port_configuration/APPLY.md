@@ -6,6 +6,29 @@ This folder is a **drop-in**. Copy files into `BHGitOps/tfc_port_configuration`;
 
 This Cursor environment cannot clone `BHGitOps/*` or run TFC workspaces. After you copy `pages-home.tf` onto a branch in that repo, TFC applies as below.
 
+## If Home still shows four catalog tables
+
+Those cards come from **`pages-home.tf` in `tfc_port_configuration`**, not from this demo repo. Paste this into Copilot **in that repo**:
+
+```text
+Edit pages-home.tf (port_page.home / $home) only. Do not change the Organization sidebar or the BannerHealth Dev/QA/Prod org switcher.
+
+DELETE every table-entities-explorer widget, including these titles if present:
+- Provisioned EC2 Resources
+- Provisioned S3 Resources
+- Recent Failed Workflow Runs
+- Recently Completed Tasks
+
+After the three pie charts, the last layout row must be exactly:
+- quickActions (action-card-widget, size 5) — Create EC2, Create S3, Submit Feedback
+- recentlyViewed (recently-viewed-entities, size 7)
+
+Do not add my-entities, recently-used-actions, owning-teams filters, or any other tables.
+Keep Quick view links, the four number charts, and the three pies.
+Copy widget JSON from PriyaRudroju/devportal-self-service dropin/tfc_port_configuration/pages-home.tf if unsure.
+Do not put # comments inside jsonencode.
+```
+
 ## Step 1 — Read identifiers
 
 On `main` of `tfc_port_configuration`:
@@ -61,9 +84,9 @@ First apply must **import**, not create — there is already one Home page per P
 3. TFC workspace for **dev** (`environments/dev`) applies first.
 4. Open https://app.us.getport.io/org_VqQnsk9IJrhyJ9mA/organization/home
    - pies render or show empty state (empty is OK in Dev)
-   - Quick view Create cards work (no lightning-bolt “action no longer exists”)
-   - Owning teams (including My Teams) and Environment filters
-   - tables for Terraform-managed EC2 and GitHub Workflow Runs
+   - Quick Actions has three buttons only (Create EC2 / Create S3 / Submit Feedback)
+   - next to Quick Actions: **Recently viewed entities** only
+   - **no** catalog tables: Provisioned EC2 Resources, Provisioned S3 Resources, Recent Failed Workflow Runs, Recently Completed Tasks
 5. TFC **qa** apply (`environments/qa`).
 6. TFC **prod** apply (`environments/prod`).
 

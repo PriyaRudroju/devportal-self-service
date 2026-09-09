@@ -8,6 +8,11 @@
 #   terraform import 'port_page.home' '$home'
 #
 # Does not change the Organization sidebar or Dev/QA/Prod org switcher.
+#
+# Canvas after the pies: Quick Actions + Recently viewed only.
+# Do NOT add table-entities-explorer widgets. Delete these if they exist:
+#   Provisioned EC2 Resources, Provisioned S3 Resources,
+#   Recent Failed Workflow Runs, Recently Completed Tasks.
 
 locals {
   home_ss_blueprint         = "selfServiceInfraResources"
@@ -74,15 +79,10 @@ resource "port_page" "home" {
           ]
         },
         {
-          height = 220
-          columns = [
-            { id = "quickActions", size = 12 },
-          ]
-        },
-        {
           height = 320
           columns = [
-            { id = "recentlyViewed", size = 12 },
+            { id = "quickActions", size = 5 },
+            { id = "recentlyViewed", size = 7 },
           ]
         },
       ]

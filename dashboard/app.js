@@ -84,30 +84,6 @@ function pie(countsMap) {
   return `<div class="pie-wrap"><div class="pie" style="background:conic-gradient(${stops.join(",")})"></div><div class="legend">${legend}</div></div>`;
 }
 
-function badge(v) {
-  const cls = ["provisioned", "success", "Done"].includes(v)
-    ? "ok"
-    : ["failed", "failure"].includes(v)
-      ? "bad"
-      : ["pending", "To Do"].includes(v)
-        ? "warn"
-        : "info";
-  return `<span class="badge ${cls}">${v}</span>`;
-}
-
-function rowsHtml(list, cols) {
-  if (!list.length) return `<div class="empty">No rows for this filter</div>`;
-  return `<table><thead><tr>${cols.map((c) => `<th>${c.label}</th>`).join("")}</tr></thead>
-    <tbody>${list
-      .map(
-        (r) =>
-          `<tr>${cols
-            .map((c) => `<td>${c.badge ? badge(r[c.key]) : r[c.key]}</td>`)
-            .join("")}</tr>`
-      )
-      .join("")}</tbody></table>`;
-}
-
 function render() {
   const org = document.getElementById("orgSwitch").value;
   const orgLabel = { dev: "Dev", qa: "QA", prod: "Prod" }[org];
@@ -176,7 +152,7 @@ function render() {
   document.getElementById("actions").innerHTML = `
     <article class="card">
       <h3>Quick Actions</h3>
-      <p class="sub">Common self-service operations</p>
+      <p class="sub">Create EC2, Create S3, Submit Feedback</p>
       <div class="card-b action-row">
         <button class="btn">Create EC2 Instance</button>
         <button class="btn">Create S3 Bucket</button>

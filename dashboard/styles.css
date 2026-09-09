@@ -142,7 +142,26 @@ main { padding: 16px 24px 56px; overflow: auto; }
   margin-bottom: 14px;
 }
 .top h1 { font-size: 26px; font-weight: 650; margin: 0; letter-spacing: -0.03em; }
-.quick-links, .kpis, .pies, .actions, .tables-stack { margin-bottom: 14px; }
+.quick-links, .kpis, .pies { margin-bottom: 14px; }
+.actions-and-viewed {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: 12px;
+  margin-bottom: 14px;
+  align-items: start;
+}
+.actions, .recent { margin-bottom: 0; }
+.recent .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.recent .row:last-child { border-bottom: 0; }
+.recent .type { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .quick-chips {
   display: flex;
   flex-wrap: wrap;
@@ -203,9 +222,10 @@ th { color: var(--muted); font-size: 11px; }
 .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
 @media (max-width: 1200px) {
   .kpis, .pies { grid-template-columns: 1fr 1fr; }
+  .actions-and-viewed { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
   .rail { display: none; }
-  .kpis, .pies { grid-template-columns: 1fr; }
+  .kpis, .pies, .actions-and-viewed { grid-template-columns: 1fr; }
 }

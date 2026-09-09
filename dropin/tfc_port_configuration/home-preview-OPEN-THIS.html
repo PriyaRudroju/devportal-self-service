@@ -149,7 +149,26 @@ main { padding: 16px 24px 56px; overflow: auto; }
   margin-bottom: 14px;
 }
 .top h1 { font-size: 26px; font-weight: 650; margin: 0; letter-spacing: -0.03em; }
-.quick-links, .kpis, .pies, .actions, .tables-stack { margin-bottom: 14px; }
+.quick-links, .kpis, .pies { margin-bottom: 14px; }
+.actions-and-viewed {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  gap: 12px;
+  margin-bottom: 14px;
+  align-items: start;
+}
+.actions, .recent { margin-bottom: 0; }
+.recent .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.recent .row:last-child { border-bottom: 0; }
+.recent .type { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .quick-chips {
   display: flex;
   flex-wrap: wrap;
@@ -210,11 +229,12 @@ th { color: var(--muted); font-size: 11px; }
 .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
 @media (max-width: 1200px) {
   .kpis, .pies { grid-template-columns: 1fr 1fr; }
+  .actions-and-viewed { grid-template-columns: 1fr; }
 }
 @media (max-width: 900px) {
   .shell { grid-template-columns: 1fr; }
   .rail { display: none; }
-  .kpis, .pies { grid-template-columns: 1fr; }
+  .kpis, .pies, .actions-and-viewed { grid-template-columns: 1fr; }
 }
 
   </style>
@@ -300,7 +320,7 @@ th { color: var(--muted); font-size: 11px; }
 
     <main>
       <div class="sample-banner">
-        Sample data only — not live BannerHealth. Quick Actions is three buttons. Below that: Recently viewed only (no catalog tables).
+        Sample data only — not live BannerHealth. After the pies: Quick Actions + Recently viewed only. No Provisioned EC2/S3, failed-run, or Jira tables.
       </div>
       <header class="top">
         <h1 id="greeting">Good afternoon</h1>
@@ -310,8 +330,10 @@ th { color: var(--muted); font-size: 11px; }
       <section class="quick-links" id="quickLinks"></section>
       <section class="kpis" id="kpis"></section>
       <section class="pies" id="pies"></section>
-      <section class="actions" id="actions"></section>
-      <section class="tables-stack" id="recentlyViewed"></section>
+      <section class="actions-and-viewed" id="actionsAndViewed">
+        <section class="actions" id="actions"></section>
+        <section class="recent" id="recentlyViewed"></section>
+      </section>
     </main>
   </div>
   <script>
@@ -401,30 +423,6 @@ function pie(countsMap) {
   return `<div class="pie-wrap"><div class="pie" style="background:conic-gradient(${stops.join(",")})"></div><div class="legend">${legend}</div></div>`;
 }
 
-function badge(v) {
-  const cls = ["provisioned", "success", "Done"].includes(v)
-    ? "ok"
-    : ["failed", "failure"].includes(v)
-      ? "bad"
-      : ["pending", "To Do"].includes(v)
-        ? "warn"
-        : "info";
-  return `<span class="badge ${cls}">${v}</span>`;
-}
-
-function rowsHtml(list, cols) {
-  if (!list.length) return `<div class="empty">No rows for this filter</div>`;
-  return `<table><thead><tr>${cols.map((c) => `<th>${c.label}</th>`).join("")}</tr></thead>
-    <tbody>${list
-      .map(
-        (r) =>
-          `<tr>${cols
-            .map((c) => `<td>${c.badge ? badge(r[c.key]) : r[c.key]}</td>`)
-            .join("")}</tr>`
-      )
-      .join("")}</tbody></table>`;
-}
-
 function render() {
   const org = document.getElementById("orgSwitch").value;
   const orgLabel = { dev: "Dev", qa: "QA", prod: "Prod" }[org];
@@ -493,7 +491,7 @@ function render() {
   document.getElementById("actions").innerHTML = `
     <article class="card">
       <h3>Quick Actions</h3>
-      <p class="sub">Common self-service operations</p>
+      <p class="sub">Create EC2, Create S3, Submit Feedback</p>
       <div class="card-b action-row">
         <button class="btn">Create EC2 Instance</button>
         <button class="btn">Create S3 Bucket</button>

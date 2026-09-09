@@ -15,7 +15,7 @@ Do not guess action ids in the BHGitOps PR. If an id is not in `*-action.tf` / `
 
 | Confirm in file | What to copy into `pages-home.tf` locals | Default in drop-in | Why this default |
 |---|---|---|---|
-| `blueprint-self-service.tf` | Self-service infra blueprint + resource + provisioning_status | `selfServiceInfraResources`, `resource` = `ec2`/`s3`, `provisioning_status` = `provisioned` | Home KPIs/tables are **provisioned** real-time rows, not pending approval. Confirm the property name if live uses `approval_status`. |
+| `blueprint-self-service.tf` | Self-service infra blueprint + resource + provisioning_status | `selfServiceInfraResources`, `resource` = `ec2`/`s3`, `provisioning_status` = `provisioned` | Home KPIs/pies are **provisioned** real-time counts. Do not add catalog tables on Home. Confirm the property name if live uses `approval_status`. |
 | `ec2-action.tf` / `variables.tf` | EC2 create action id | `create_ec2_instance` or `var.ec2_instance_create_action_identifier` | Set `""` if missing. |
 | `s3-action.tf` / `variables.tf` | S3 create action id | `create_s3_bucket` or `var.s3_bucket_create_action_identifier` | Use the standard create action, not admin/policy. |
 | `feedback.tf` / `variables.tf` | Submit Feedback action id | `submit_feedback` or `var.feedback_action_identifier` | Confirm the identifier. |

@@ -22,7 +22,7 @@ Pages are **opt-in** in this demo repo. Default `apply_port_config.py` still app
 
 ## Local preview
 
-[`dashboard/`](../dashboard/) is a **sample-data** stand-in of the Home canvas (provisioned EC2/S3, failed runs, completed Jira). Quick Actions is three buttons only; tables are separate. It does not apply to Port. Sidebar folders match live BannerHealth Dev and are not managed by `$home`.
+[`dashboard/`](../dashboard/) is a **sample-data** stand-in of the Home canvas (provisioned EC2/S3, failed runs, completed Jira). After the pies: Quick Actions + Recently viewed only. No catalog tables. It does not apply to Port. Sidebar folders match live BannerHealth Dev and are not managed by `$home`.
 
 ```bash
 cd dashboard
@@ -37,7 +37,7 @@ Open http://localhost:4173
 2. Copy `dropin/tfc_port_configuration/pages-home.tf` to that repo’s **root**. Remap `locals`.
 3. `terraform import 'port_page.home' '$home'` in the **dev** TFC workspace.
 4. Set `PORT_BETA_FEATURES_ENABLED=true` if the provider still gates pages.
-5. TFC apply **dev**. QA Home: pies (empty OK), working action cards, My Teams, tables.
+5. TFC apply **dev**. QA Home: pies (empty OK), three action cards, Recently viewed. No catalog tables.
 6. TFC apply **qa**, then **prod**.
 
 Leave `port_orchestration_repo` unchanged for v1 (no `port-configs/pages/home.json`).

@@ -90,7 +90,7 @@
 
     <main>
       <div class="sample-banner">
-        Sample data only — not live BannerHealth. Quick Actions is three buttons. Below that: Recently viewed only (no catalog tables).
+        Sample data only — not live BannerHealth. After the pies: Quick Actions + Recently viewed only. No Provisioned EC2/S3, failed-run, or Jira tables.
       </div>
       <header class="top">
         <h1 id="greeting">Good afternoon</h1>
@@ -100,8 +100,10 @@
       <section class="quick-links" id="quickLinks"></section>
       <section class="kpis" id="kpis"></section>
       <section class="pies" id="pies"></section>
-      <section class="actions" id="actions"></section>
-      <section class="tables-stack" id="recentlyViewed"></section>
+      <section class="actions-and-viewed" id="actionsAndViewed">
+        <section class="actions" id="actions"></section>
+        <section class="recent" id="recentlyViewed"></section>
+      </section>
     </main>
   </div>
   <script src="./app.js"></script>
