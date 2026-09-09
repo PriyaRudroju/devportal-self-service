@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BannerHealth Home — reference dashboard</title>
+  <title>BannerHealth Home v2 — EC2/S3 pies have no pending</title>
   <style>
 :root {
   --bg: #f4f6f8;
@@ -231,11 +231,11 @@ main { padding: 16px 24px 48px; overflow: auto; }
 
     <main>
       <div class="spec">
-        <h2>Reference — BannerHealth $home</h2>
+        <h2>Reference v2 — BannerHealth $home · 2026-09-09</h2>
         <p>
           Sample numbers only. Locked canvas:
-          <span class="keep">Quick view → 4 KPIs → 3 pies (EC2/S3 = provisioned + failed, no pending) → Quick Actions + Recently viewed.</span>
-          <span class="drop">No catalog tables under actions. Service blueprint is data model, not a Home widget.</span>
+          <span class="keep">Quick view → 4 KPIs → 3 pies. EC2 and S3 pies have TWO slices: provisioned and failed. There is no pending slice.</span>
+          <span class="drop">If you still see pending · 1 on an EC2/S3 pie, you opened an old download. Re-save this file.</span>
         </p>
       </div>
 
@@ -290,7 +290,7 @@ main { padding: 16px 24px 48px; overflow: auto; }
       <section class="pies">
         <article class="card">
           <h3>EC2 by Status</h3>
-          <p class="sub">Provisioned and failed only · resource = ec2</p>
+          <p class="sub">TWO slices only: provisioned + failed. Pending is excluded.</p>
           <div class="card-b pie-wrap">
             <div class="pie" style="background:conic-gradient(#10b981 0deg 270deg,#ef4444 270deg 360deg)"></div>
             <div class="legend">
@@ -301,7 +301,7 @@ main { padding: 16px 24px 48px; overflow: auto; }
         </article>
         <article class="card">
           <h3>S3 by Status</h3>
-          <p class="sub">Provisioned and failed only · resource = s3</p>
+          <p class="sub">TWO slices only: provisioned + failed. Pending is excluded.</p>
           <div class="card-b pie-wrap">
             <div class="pie" style="background:conic-gradient(#10b981 0deg 240deg,#ef4444 240deg 360deg)"></div>
             <div class="legend">

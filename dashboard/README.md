@@ -6,8 +6,10 @@ This is **not** live Port. The cloud agent’s `http://localhost:4173` only work
 
 Locked Home canvas: Quick view, four KPIs, three pies, then **Quick Actions + Recently viewed** only.
 
-1. Download **Raw** [`dashboard/REFERENCE-DASHBOARD.html`](https://github.com/PriyaRudroju/devportal-self-service/blob/cursor/landing-dashboard-98a0/dashboard/REFERENCE-DASHBOARD.html)
-2. Save As → open in Chrome/Edge (double-click; no Python).
+1. Download **Raw** [`dashboard/HOME-v2-no-pending.html`](https://github.com/PriyaRudroju/devportal-self-service/blob/cursor/landing-dashboard-98a0/dashboard/HOME-v2-no-pending.html) (new filename so it does not overwrite an old `OPEN-THIS.html`).
+2. Save As → open in Chrome/Edge. Browser tab title must say **v2 — EC2/S3 pies have no pending**. If the tab still says the old title, you opened the previous download.
+
+EC2/S3 pies: **provisioned** and **failed** only (no `pending · 1`).
 
 Same file: [`OPEN-THIS.html`](https://github.com/PriyaRudroju/devportal-self-service/blob/cursor/landing-dashboard-98a0/dashboard/OPEN-THIS.html). In `tfc_port_configuration`, copy `dropin/tfc_port_configuration/REFERENCE-DASHBOARD.html`.
 
