@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BannerHealth - Dev · Home</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="org">BannerHealth - Dev</div>
+      <input class="search" placeholder="Search pages" />
+      <div class="nav-label">Organization</div>
+      <button class="nav active">Home</button>
+      <button class="nav" data-scroll="quick">Self-service hub</button>
+      <div class="nav-label">Catalog tables</div>
+      <button class="nav" data-table="ec2">Terraform-managed EC2</button>
+      <button class="nav" data-table="runs">GitHub Workflow Runs</button>
+      <button class="nav" data-table="jira">Jira Issues</button>
+    </aside>
+    <main>
+      <header class="top">
+        <h1 id="greeting">Good afternoon, Vishwak Sena Priya</h1>
+        <input class="search wide" id="globalSearch" placeholder="Search" />
+      </header>
+
+      <section class="filters" id="filters">
+        <label>Owning teams
+          <select id="team">
+            <option value="all">All teams</option>
+            <option value="me">My Teams</option>
+            <option value="Platform-Team">Platform-Team</option>
+            <option value="Application-Team">Application-Team</option>
+          </select>
+        </label>
+        <label>Environment
+          <select id="env">
+            <option value="all">All</option>
+            <option value="dev">dev</option>
+            <option value="qa">qa</option>
+            <option value="prod">prod</option>
+          </select>
+        </label>
+      </section>
+
+      <section class="kpis" id="kpis"></section>
+      <section class="pies" id="pies"></section>
+      <section class="quick" id="quick"></section>
+      <section class="personal" id="personal"></section>
+      <section class="tables" id="tables"></section>
+    </main>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>

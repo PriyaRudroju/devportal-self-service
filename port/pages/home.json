@@ -1,0 +1,230 @@
+{
+  "identifier": "$home",
+  "title": "Home",
+  "icon": "Home",
+  "type": "home",
+  "description": "BannerHealth landing dashboard: KPI counts, status pies, quick view, and catalog explorers for Terraform-managed EC2, GitHub Workflow Runs, and Jira.",
+  "locked": false,
+  "pageFilters": [
+    {
+      "identifier": "owning-teams-filter",
+      "title": "Owning teams",
+      "query": {
+        "combinator": "and",
+        "rules": [
+          {
+            "property": "$team",
+            "operator": "containsAny",
+            "value": "{{pageFilter.owningTeams}}"
+          }
+        ]
+      }
+    },
+    {
+      "identifier": "environment-filter",
+      "title": "Environment",
+      "query": {
+        "combinator": "and",
+        "rules": [
+          {
+            "property": "environment",
+            "operator": "=",
+            "value": "{{pageFilter.environment}}"
+          }
+        ]
+      }
+    }
+  ],
+  "widgets": [
+    {
+      "id": "homeDashboard",
+      "type": "dashboard-widget",
+      "layout": [
+        {
+          "height": 180,
+          "columns": [
+            { "id": "kpiPendingEc2", "size": 3 },
+            { "id": "kpiTfcEc2Total", "size": 3 },
+            { "id": "kpiFailedGithubRuns", "size": 3 },
+            { "id": "kpiOpenJira", "size": 3 }
+          ]
+        },
+        {
+          "height": 400,
+          "columns": [
+            { "id": "pieEc2Status", "size": 4 },
+            { "id": "pieGithubRunStatus", "size": 4 },
+            { "id": "pieJiraStatus", "size": 4 }
+          ]
+        },
+        {
+          "height": 320,
+          "columns": [
+            { "id": "quickViewLinks", "size": 6 },
+            { "id": "quickViewActions", "size": 6 }
+          ]
+        },
+        {
+          "height": 320,
+          "columns": [
+            { "id": "myEntities", "size": 4 },
+            { "id": "recentlyViewed", "size": 4 },
+            { "id": "recentlyUsedActions", "size": 4 }
+          ]
+        },
+        {
+          "height": 420,
+          "columns": [
+            { "id": "ec2Table", "size": 6 },
+            { "id": "githubRunsTable", "size": 6 }
+          ]
+        }
+      ],
+      "widgets": [
+        {
+          "id": "kpiPendingEc2",
+          "type": "entities-number-chart",
+          "title": "Pending EC2",
+          "icon": "AWS",
+          "blueprint": "terraformManagedEc2",
+          "calculationBy": "entities",
+          "func": "count",
+          "unit": "custom",
+          "unitCustom": "pending",
+          "dataset": {
+            "combinator": "and",
+            "rules": [
+              { "property": "status", "operator": "=", "value": "pending" }
+            ]
+          }
+        },
+        {
+          "id": "kpiTfcEc2Total",
+          "type": "entities-number-chart",
+          "title": "TFC EC2 total",
+          "icon": "AWS",
+          "blueprint": "terraformManagedEc2",
+          "calculationBy": "entities",
+          "func": "count",
+          "unit": "custom",
+          "unitCustom": "instances"
+        },
+        {
+          "id": "kpiFailedGithubRuns",
+          "type": "entities-number-chart",
+          "title": "Failed GitHub runs",
+          "icon": "Github",
+          "blueprint": "githubWorkflowRun",
+          "calculationBy": "entities",
+          "func": "count",
+          "unit": "custom",
+          "unitCustom": "failed",
+          "dataset": {
+            "combinator": "and",
+            "rules": [
+              { "property": "conclusion", "operator": "=", "value": "failure" }
+            ]
+          }
+        },
+        {
+          "id": "kpiOpenJira",
+          "type": "entities-number-chart",
+          "title": "Open Jira",
+          "icon": "Jira",
+          "blueprint": "jiraIssue",
+          "calculationBy": "entities",
+          "func": "count",
+          "unit": "custom",
+          "unitCustom": "open",
+          "dataset": {
+            "combinator": "and",
+            "rules": [
+              { "property": "status", "operator": "!=", "value": "Done" }
+            ]
+          }
+        },
+        {
+          "id": "pieEc2Status",
+          "type": "entities-pie-chart",
+          "title": "Terraform-managed EC2 by status",
+          "icon": "PieChart",
+          "blueprint": "terraformManagedEc2",
+          "property": "property#status",
+          "dataset": { "combinator": "and", "rules": [] }
+        },
+        {
+          "id": "pieGithubRunStatus",
+          "type": "entities-pie-chart",
+          "title": "GitHub Workflow Runs by status",
+          "icon": "PieChart",
+          "blueprint": "githubWorkflowRun",
+          "property": "property#conclusion",
+          "dataset": { "combinator": "and", "rules": [] }
+        },
+        {
+          "id": "pieJiraStatus",
+          "type": "entities-pie-chart",
+          "title": "Jira issues by status",
+          "icon": "PieChart",
+          "blueprint": "jiraIssue",
+          "property": "property#status",
+          "dataset": { "combinator": "and", "rules": [] }
+        },
+        {
+          "id": "quickViewLinks",
+          "type": "links-widget",
+          "title": "Quick view",
+          "icon": "Link",
+          "links": [
+            { "title": "Self-service hub", "url": "/self-serve", "icon": "Bolt" },
+            { "title": "Terraform-managed EC2", "url": "/terraformManagedEc2", "icon": "AWS" },
+            { "title": "GitHub Workflow Runs", "url": "/githubWorkflowRun", "icon": "Github" },
+            { "title": "Users and teams", "url": "/settings/users", "icon": "Team" }
+          ]
+        },
+        {
+          "id": "quickViewActions",
+          "type": "action-card-widget",
+          "title": "Self-service",
+          "icon": "Bolt",
+          "actions": [
+            "provision_ec2_request",
+            "provision_s3_bucket",
+            "submit_feedback"
+          ]
+        },
+        {
+          "id": "myEntities",
+          "type": "my-entities",
+          "title": "My entities"
+        },
+        {
+          "id": "recentlyViewed",
+          "type": "recently-viewed-entities",
+          "title": "Recently viewed entities"
+        },
+        {
+          "id": "recentlyUsedActions",
+          "type": "recently-used-actions",
+          "title": "Recently used actions"
+        },
+        {
+          "id": "ec2Table",
+          "type": "table-entities-explorer",
+          "title": "Terraform-managed EC2",
+          "icon": "AWS",
+          "blueprint": "terraformManagedEc2",
+          "dataset": { "combinator": "and", "rules": [] }
+        },
+        {
+          "id": "githubRunsTable",
+          "type": "table-entities-explorer",
+          "title": "GitHub Workflow Runs",
+          "icon": "Github",
+          "blueprint": "githubWorkflowRun",
+          "dataset": { "combinator": "and", "rules": [] }
+        }
+      ]
+    }
+  ]
+}

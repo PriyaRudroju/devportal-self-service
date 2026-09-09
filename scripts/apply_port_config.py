@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Apply Port blueprints, actions, automations, and workflows from Git to Port API."""
+"""Apply Port blueprints, actions, automations, workflows, and optional pages from Git to Port API."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -25,7 +26,8 @@ ENV_OVERRIDE_KEYS = {
     "TFC_WORKSPACE",
 }
 
-ALL_RESOURCES = ("blueprints", "actions", "automations", "workflows")
+ALL_RESOURCES = ("blueprints", "actions", "automations", "workflows", "pages")
+DEFAULT_RESOURCES = ("blueprints", "actions", "automations", "workflows")
 GITHUB_MODES = ("legacy", "ocean")
 GITHUB_OCEAN_MARKER = "github-ocean"
 
@@ -162,6 +164,23 @@ def prepare_action_payload(payload: dict, variables: dict[str, str]) -> dict:
     return payload
 
 
+def prepare_page_payload(payload: dict) -> dict:
+    """Port page API expects widgets and pageFilters as JSON strings."""
+    widgets = payload.get("widgets")
+    if isinstance(widgets, list):
+        payload["widgets"] = [
+            json.dumps(item, separators=(",", ":")) if isinstance(item, (dict, list)) else item
+            for item in widgets
+        ]
+    filters = payload.get("pageFilters")
+    if isinstance(filters, list):
+        payload["pageFilters"] = [
+            json.dumps(item, separators=(",", ":")) if isinstance(item, (dict, list)) else item
+            for item in filters
+        ]
+    return payload
+
+
 def get_access_token(api_url: str, client_id: str, client_secret: str) -> str:
     payload = json.dumps({"clientId": client_id, "clientSecret": client_secret}).encode("utf-8")
     request = urllib.request.Request(
@@ -223,8 +242,11 @@ def update_resource(
     update_path_template: str,
     identifier: str,
     payload: dict,
+    *,
+    encode_identifier: bool = False,
 ) -> tuple[bool, str]:
-    update_url = f"{api_url}{update_path_template.format(identifier=identifier)}"
+    path_identifier = urllib.parse.quote(identifier, safe="") if encode_identifier else identifier
+    update_url = f"{api_url}{update_path_template.format(identifier=path_identifier)}"
 
     for method in ("PUT", "PATCH"):
         update_status, update_body = api_request(method, update_url, token, payload)
@@ -248,6 +270,7 @@ def apply_json_files(
     plan_mode: bool,
     *,
     require_installation_id: bool = True,
+    encode_identifier: bool = False,
 ) -> None:
     for file_path in sorted(files):
         raw = file_path.read_text(encoding="utf-8")
@@ -270,6 +293,8 @@ def apply_json_files(
 
         if resource_label in {"action", "automation"}:
             payload = prepare_action_payload(payload, variables)
+        if resource_label == "page":
+            payload = prepare_page_payload(payload)
 
         identifier = payload.get("identifier")
         if not identifier:
@@ -293,6 +318,7 @@ def apply_json_files(
                 update_path_template,
                 identifier,
                 payload,
+                encode_identifier=encode_identifier,
             )
             print(message)
             if not ok:
@@ -315,7 +341,7 @@ def collect_json_files(directory: Path) -> list[Path]:
 
 def parse_resources(raw: str | None) -> set[str]:
     if not raw:
-        return set(ALL_RESOURCES)
+        return set(DEFAULT_RESOURCES)
     selected = {part.strip().lower() for part in raw.split(",") if part.strip()}
     unknown = selected - set(ALL_RESOURCES)
     if unknown:
@@ -331,7 +357,7 @@ def main() -> None:
     parser.add_argument("--plan", action="store_true", help="Alias for --dry-run")
     parser.add_argument(
         "--resources",
-        help="Comma-separated resource types: blueprints,actions,automations,workflows",
+        help="Comma-separated resource types: blueprints,actions,automations,workflows,pages (pages are opt-in)",
     )
     parser.add_argument("--skip-legacy", action="store_true", help="Skip legacy actions/automations")
     parser.add_argument(
@@ -434,6 +460,19 @@ def main() -> None:
             variables,
             plan_mode,
             require_installation_id=require_installation_id,
+        )
+
+    if "pages" in selected_resources:
+        apply_json_files(
+            api_url,
+            token,
+            "page",
+            "/v1/pages",
+            "/v1/pages/{identifier}",
+            collect_json_files(repo_root / "port" / "pages"),
+            variables,
+            plan_mode,
+            encode_identifier=True,
         )
 
     print("Port config apply completed successfully")
